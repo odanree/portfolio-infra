@@ -1,0 +1,275 @@
+services:
+
+  # ── Shared Infrastructure ────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: portfolio-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${PORTFOLIO_DB_PASSWORD}
+      PORTFOLIO_DB_PASSWORD: ${PORTFOLIO_DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    command: >
+      postgres
+        -c 'max_connections=200'
+        -c 'shared_buffers=256MB'
+        -c 'effective_cache_size=512MB'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - portfolio-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: portfolio-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --appendfsync everysec --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - portfolio-net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: portfolio-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN}
+      CADDY_EMAIL: ${CADDY_EMAIL}
+    networks:
+      - portfolio-net
+    depends_on:
+      - compensation-ingest-api
+      - compensation-explorer-api
+      - compensation-explorer-frontend
+      - shopify-erp-app
+      - shopify-order-agent
+      - shopify-inventory-agent
+      - shopify-metaobjects-webhook
+
+  # ── Compensation Ingest API (Django + Celery) ─────────────────────────────────
+
+  compensation-ingest-api:
+    build:
+      context: ../compensation-ingest-api
+      dockerfile: Dockerfile
+    container_name: compensation-ingest-api
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60"
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DATABASE_URL: postgres://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/compensation_ingest
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${INGEST_SECRET_KEY}
+      ALLOWED_HOSTS: compensation-ingest.${DOMAIN}
+      DEBUG: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - portfolio-net
+
+  compensation-ingest-worker:
+    build:
+      context: ../compensation-ingest-api
+      dockerfile: Dockerfile
+    container_name: compensation-ingest-worker
+    restart: unless-stopped
+    command: celery -A config.celery worker --loglevel=info --concurrency 2
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DATABASE_URL: postgres://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/compensation_ingest
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${INGEST_SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - portfolio-net
+
+  # ── Compensation Benchmarking Explorer (Django GraphQL + Next.js) ─────────────
+
+  compensation-explorer-api:
+    build:
+      context: ../compensation-benchmarking-explorer/backend
+      dockerfile: Dockerfile
+    container_name: compensation-explorer-api
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py seed_bands --no-color &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60"
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DATABASE_URL: postgres://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/compensation_explorer
+      SECRET_KEY: ${EXPLORER_SECRET_KEY}
+      DEBUG: "False"
+      ALLOWED_HOSTS: compensation-explorer.${DOMAIN}
+      CORS_ALLOWED_ORIGINS: https://compensation-explorer.${DOMAIN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - portfolio-net
+
+  compensation-explorer-frontend:
+    build:
+      context: ../compensation-benchmarking-explorer/frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_GRAPHQL_URL: https://compensation-explorer.${DOMAIN}/graphql/
+    container_name: compensation-explorer-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    networks:
+      - portfolio-net
+    depends_on:
+      - compensation-explorer-api
+
+  # ── Shopify ERP Integration (Node.js) ─────────────────────────────────────────
+
+  shopify-erp-app:
+    build:
+      context: ../shopify-erp-integration
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: shopify-erp-app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      SHOPIFY_API_KEY: ${SHOPIFY_ERP_API_KEY}
+      SHOPIFY_API_SECRET: ${SHOPIFY_ERP_API_SECRET}
+      SHOPIFY_WEBHOOK_SECRET: ${SHOPIFY_ERP_WEBHOOK_SECRET}
+    networks:
+      - portfolio-net
+
+  # ── Shopify Order Exception Agent (Python + worker) ───────────────────────────
+
+  shopify-order-agent:
+    build:
+      context: ../shopify-order-exception-agent
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: shopify-order-agent
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/order_exception_agent
+      REDIS_URL: redis://redis:6379/1
+      SHOPIFY_API_KEY: ${SHOPIFY_ORDER_API_KEY}
+      SHOPIFY_API_SECRET: ${SHOPIFY_ORDER_API_SECRET}
+      SHOPIFY_WEBHOOK_SECRET: ${SHOPIFY_ORDER_WEBHOOK_SECRET}
+      SHOPIFY_STORE_DOMAIN: ${SHOPIFY_ORDER_STORE_DOMAIN}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY_ORDER}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - portfolio-net
+
+  shopify-order-agent-worker:
+    build:
+      context: ../shopify-order-exception-agent
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: shopify-order-agent-worker
+    restart: unless-stopped
+    command: python -m app.worker
+    environment:
+      DATABASE_URL: postgres://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/order_exception_agent
+      REDIS_URL: redis://redis:6379/1
+      SHOPIFY_API_KEY: ${SHOPIFY_ORDER_API_KEY}
+      SHOPIFY_API_SECRET: ${SHOPIFY_ORDER_API_SECRET}
+      SHOPIFY_WEBHOOK_SECRET: ${SHOPIFY_ORDER_WEBHOOK_SECRET}
+      SHOPIFY_STORE_DOMAIN: ${SHOPIFY_ORDER_STORE_DOMAIN}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY_ORDER}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - portfolio-net
+
+  # ── Shopify Inventory Discrepancy Agent (Python) ──────────────────────────────
+
+  shopify-inventory-agent:
+    build:
+      context: ../shopify-inventory-discrepancy-agent
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: shopify-inventory-agent
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/inventory_discrepancy
+      REDIS_URL: redis://redis:6379/2
+      SHOPIFY_API_KEY: ${SHOPIFY_INVENTORY_API_KEY}
+      SHOPIFY_API_SECRET: ${SHOPIFY_INVENTORY_API_SECRET}
+      SHOPIFY_WEBHOOK_SECRET: ${SHOPIFY_INVENTORY_WEBHOOK_SECRET}
+      SHOPIFY_STORE_DOMAIN: ${SHOPIFY_INVENTORY_STORE_DOMAIN}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY_INVENTORY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - portfolio-net
+
+  # ── Shopify Metaobjects Webhook Server ────────────────────────────────────────
+  # Note: Only the webhook server component is deployed here.
+  # The checkout UI extension itself runs within Shopify's infrastructure
+  # and is deployed via `shopify app deploy` from the project directory.
+
+  shopify-metaobjects-webhook:
+    build:
+      context: ../shopify-metaobjects-checkout-demo
+      dockerfile: Dockerfile
+    container_name: shopify-metaobjects-webhook
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      SHOPIFY_API_KEY: ${SHOPIFY_METAOBJECTS_API_KEY}
+      SHOPIFY_API_SECRET: ${SHOPIFY_METAOBJECTS_API_SECRET}
+      SHOPIFY_WEBHOOK_SECRET: ${SHOPIFY_METAOBJECTS_WEBHOOK_SECRET}
+    networks:
+      - portfolio-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  portfolio-net:
+    driver: bridge

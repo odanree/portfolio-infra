@@ -1,0 +1,46 @@
+# Caddy reverse proxy for all portfolio projects.
+# TLS is handled automatically via Let's Encrypt.
+# Set DOMAIN in .env (e.g., DOMAIN=yourdomain.com).
+
+{
+    email {$CADDY_EMAIL}
+}
+
+# ── Compensation Ingest API ───────────────────────────────────────────────────
+compensation-ingest.{$DOMAIN} {
+    reverse_proxy compensation-ingest-api:8000
+}
+
+# ── Compensation Benchmarking Explorer ───────────────────────────────────────
+# /graphql/ goes to the Django backend; everything else to the Next.js frontend
+compensation-explorer.{$DOMAIN} {
+    handle /graphql/* {
+        reverse_proxy compensation-explorer-api:8000
+    }
+    handle /admin/* {
+        reverse_proxy compensation-explorer-api:8000
+    }
+    handle {
+        reverse_proxy compensation-explorer-frontend:3000
+    }
+}
+
+# ── Shopify ERP Integration ───────────────────────────────────────────────────
+shopify-erp.{$DOMAIN} {
+    reverse_proxy shopify-erp-app:3000
+}
+
+# ── Shopify Order Exception Agent ─────────────────────────────────────────────
+shopify-orders.{$DOMAIN} {
+    reverse_proxy shopify-order-agent:8000
+}
+
+# ── Shopify Inventory Discrepancy Agent ───────────────────────────────────────
+shopify-inventory.{$DOMAIN} {
+    reverse_proxy shopify-inventory-agent:8000
+}
+
+# ── Shopify Metaobjects Webhook Server ────────────────────────────────────────
+shopify-metaobjects.{$DOMAIN} {
+    reverse_proxy shopify-metaobjects-webhook:3000
+}
