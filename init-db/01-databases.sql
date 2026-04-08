@@ -11,3 +11,13 @@ GRANT ALL PRIVILEGES ON DATABASE compensation_ingest    TO portfolio_user;
 GRANT ALL PRIVILEGES ON DATABASE compensation_explorer   TO portfolio_user;
 GRANT ALL PRIVILEGES ON DATABASE order_exception_agent   TO portfolio_user;
 GRANT ALL PRIVILEGES ON DATABASE inventory_discrepancy   TO portfolio_user;
+
+-- Postgres 15+: GRANT ON DATABASE no longer implies schema public access
+\c compensation_ingest
+GRANT ALL ON SCHEMA public TO portfolio_user;
+\c compensation_explorer
+GRANT ALL ON SCHEMA public TO portfolio_user;
+\c order_exception_agent
+GRANT ALL ON SCHEMA public TO portfolio_user;
+\c inventory_discrepancy
+GRANT ALL ON SCHEMA public TO portfolio_user;
