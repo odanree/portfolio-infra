@@ -195,6 +195,7 @@ services:
       SHOPIFY_ACCESS_TOKEN: ${SHOPIFY_ORDER_ACCESS_TOKEN}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY_ORDER}
       SLACK_WEBHOOK_URL: ${SHOPIFY_ORDER_SLACK_WEBHOOK_URL}
+      AGENT_MODE: shadow
     depends_on:
       postgres:
         condition: service_healthy
