@@ -182,7 +182,7 @@ services:
     container_name: shopify-order-agent
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/order_exception_agent
+      DATABASE_URL: postgresql+asyncpg://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/order_exception_agent
       REDIS_URL: redis://redis:6379/1
       SHOPIFY_API_KEY: ${SHOPIFY_ORDER_API_KEY}
       SHOPIFY_API_SECRET: ${SHOPIFY_ORDER_API_SECRET}
@@ -206,7 +206,7 @@ services:
     restart: unless-stopped
     command: python -m app.worker
     environment:
-      DATABASE_URL: postgres://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/order_exception_agent
+      DATABASE_URL: postgresql+asyncpg://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/order_exception_agent
       REDIS_URL: redis://redis:6379/1
       SHOPIFY_API_KEY: ${SHOPIFY_ORDER_API_KEY}
       SHOPIFY_API_SECRET: ${SHOPIFY_ORDER_API_SECRET}
@@ -231,7 +231,7 @@ services:
     container_name: shopify-inventory-agent
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/inventory_discrepancy
+      DATABASE_URL: postgresql+asyncpg://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/inventory_discrepancy
       REDIS_URL: redis://redis:6379/2
       SHOPIFY_API_KEY: ${SHOPIFY_INVENTORY_API_KEY}
       SHOPIFY_API_SECRET: ${SHOPIFY_INVENTORY_API_SECRET}
