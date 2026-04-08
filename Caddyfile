@@ -45,20 +45,20 @@ shopify-metaobjects.{$DOMAIN} {
     reverse_proxy shopify-metaobjects-webhook:3000
 }
 
-# ── Existing host-based projects (proxied via host.docker.internal) ───────────
+# ── Existing projects (Caddy joined to their Docker networks directly) ─────────
 
 lumen.{$DOMAIN} {
     handle /api/ping {
-        reverse_proxy host.docker.internal:8000
+        reverse_proxy lumen-api:8000
     }
     handle /api/ws/* {
-        reverse_proxy host.docker.internal:8000
+        reverse_proxy lumen-api:8000
     }
     handle /api/playlist/serve/* {
-        reverse_proxy host.docker.internal:8000
+        reverse_proxy lumen-api:8000
     }
     handle {
-        reverse_proxy host.docker.internal:3000
+        reverse_proxy lumen-frontend:3000
     }
     header {
         X-Frame-Options DENY
@@ -68,7 +68,7 @@ lumen.{$DOMAIN} {
 }
 
 adu.{$DOMAIN} {
-    reverse_proxy host.docker.internal:8888
+    reverse_proxy adu-api:8080
     header {
         X-Frame-Options DENY
         X-Content-Type-Options nosniff
@@ -77,15 +77,15 @@ adu.{$DOMAIN} {
 }
 
 grafana.{$DOMAIN} {
-    reverse_proxy host.docker.internal:3001
+    reverse_proxy adu-grafana:3000
 }
 
 grafana-lumen.{$DOMAIN} {
-    reverse_proxy host.docker.internal:3004
+    reverse_proxy lumen-monitoring-grafana:3000
 }
 
 beacon.{$DOMAIN} {
-    reverse_proxy host.docker.internal:3002
+    reverse_proxy beacon-frontend:3000
     header {
         X-Frame-Options DENY
         X-Content-Type-Options nosniff
@@ -94,5 +94,5 @@ beacon.{$DOMAIN} {
 }
 
 grafana-beacon.{$DOMAIN} {
-    reverse_proxy host.docker.internal:3003
+    reverse_proxy beacon-grafana:3000
 }

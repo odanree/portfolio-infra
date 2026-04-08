@@ -45,8 +45,6 @@ services:
     image: caddy:2-alpine
     container_name: portfolio-caddy
     restart: unless-stopped
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "80:80"
       - "443:443"
@@ -59,6 +57,9 @@ services:
       CADDY_EMAIL: ${CADDY_EMAIL}
     networks:
       - portfolio-net
+      - lumen_lumen-net
+      - adu-dashboard_adu-net
+      - beacon_jsp-net
     depends_on:
       - compensation-ingest-api
       - compensation-explorer-api
@@ -279,3 +280,9 @@ volumes:
 networks:
   portfolio-net:
     driver: bridge
+  lumen_lumen-net:
+    external: true
+  adu-dashboard_adu-net:
+    external: true
+  beacon_jsp-net:
+    external: true
