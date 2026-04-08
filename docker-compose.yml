@@ -247,6 +247,7 @@ services:
       SHOPIFY_WEBHOOK_SECRET: ${SHOPIFY_INVENTORY_WEBHOOK_SECRET}
       SHOPIFY_STORE_DOMAIN: ${SHOPIFY_INVENTORY_STORE_DOMAIN}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY_INVENTORY}
+      AGENT_MODE: shadow
     depends_on:
       postgres:
         condition: service_healthy
