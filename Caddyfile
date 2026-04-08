@@ -77,11 +77,11 @@ adu.{$DOMAIN} {
 }
 
 grafana.{$DOMAIN} {
-    reverse_proxy adu-grafana:3000
+    reverse_proxy beacon-grafana:3000
 }
 
 grafana-lumen.{$DOMAIN} {
-    reverse_proxy lumen-monitoring-grafana:3000
+    redir https://grafana.{$DOMAIN}{uri} permanent
 }
 
 beacon.{$DOMAIN} {
@@ -94,5 +94,5 @@ beacon.{$DOMAIN} {
 }
 
 grafana-beacon.{$DOMAIN} {
-    reverse_proxy beacon-grafana:3000
+    redir https://grafana.{$DOMAIN}{uri} permanent
 }
