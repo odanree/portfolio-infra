@@ -44,3 +44,55 @@ shopify-inventory.{$DOMAIN} {
 shopify-metaobjects.{$DOMAIN} {
     reverse_proxy shopify-metaobjects-webhook:3000
 }
+
+# ── Existing host-based projects (proxied via host.docker.internal) ───────────
+
+lumen.{$DOMAIN} {
+    handle /api/ping {
+        reverse_proxy host.docker.internal:8000
+    }
+    handle /api/ws/* {
+        reverse_proxy host.docker.internal:8000
+    }
+    handle /api/playlist/serve/* {
+        reverse_proxy host.docker.internal:8000
+    }
+    handle {
+        reverse_proxy host.docker.internal:3000
+    }
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
+adu.{$DOMAIN} {
+    reverse_proxy host.docker.internal:8888
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
+grafana.{$DOMAIN} {
+    reverse_proxy host.docker.internal:3001
+}
+
+grafana-lumen.{$DOMAIN} {
+    reverse_proxy host.docker.internal:3004
+}
+
+beacon.{$DOMAIN} {
+    reverse_proxy host.docker.internal:3002
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
+grafana-beacon.{$DOMAIN} {
+    reverse_proxy host.docker.internal:3003
+}
