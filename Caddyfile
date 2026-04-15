@@ -96,3 +96,13 @@ beacon.{$DOMAIN} {
 grafana-beacon.{$DOMAIN} {
     redir https://grafana.{$DOMAIN}{uri} permanent
 }
+
+# ── SEC Financial Intelligence API ───────────────────────────────────────────
+sec-finint.{$DOMAIN} {
+    reverse_proxy sec-finint-api:8000
+}
+
+# ── JD Role Classifier API ────────────────────────────────────────────────────
+jd-classifier.{$DOMAIN} {
+    reverse_proxy jd-classifier-api:8000
+}
