@@ -68,6 +68,8 @@ services:
       - shopify-order-agent
       - shopify-inventory-agent
       - shopify-metaobjects-webhook
+      - sec-finint-api
+      - jd-classifier-api
 
   # ── Compensation Ingest API (Django + Celery) ─────────────────────────────────
 
@@ -277,6 +279,55 @@ services:
       SHOPIFY_WEBHOOK_SECRET: ${SHOPIFY_METAOBJECTS_WEBHOOK_SECRET}
       SHOPIFY_SHOP_DOMAIN: ${SHOPIFY_METAOBJECTS_SHOP_DOMAIN}
       SHOPIFY_ACCESS_TOKEN: ${SHOPIFY_METAOBJECTS_ACCESS_TOKEN}
+    networks:
+      - portfolio-net
+
+  # ── SEC Financial Intelligence API (FastAPI + EDGAR + Azure AI) ───────────────
+
+  sec-finint-api:
+    build:
+      context: ../sec-financial-intelligence
+      dockerfile: Dockerfile
+    container_name: sec-finint-api
+    restart: unless-stopped
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/sec_financial_intelligence
+      AZURE_DOC_INTELLIGENCE_ENDPOINT: ${SEC_FININT_AZURE_DOC_ENDPOINT}
+      AZURE_DOC_INTELLIGENCE_KEY: ${SEC_FININT_AZURE_DOC_KEY}
+      AZURE_OPENAI_ENDPOINT: ${SEC_FININT_AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_KEY: ${SEC_FININT_AZURE_OPENAI_KEY}
+      AZURE_OPENAI_DEPLOYMENT: ${SEC_FININT_AZURE_OPENAI_DEPLOYMENT:-gpt-4}
+      AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${SEC_FININT_AZURE_OPENAI_EMBEDDING_DEPLOYMENT:-text-embedding-3-small}
+      MOCK_AZURE: ${SEC_FININT_MOCK_AZURE:-false}
+      APP_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - portfolio-net
+
+  # ── JD Role Classifier API (FastAPI + spaCy + BERT + LoRA) ───────────────────
+
+  jd-classifier-api:
+    build:
+      context: ../jd-role-classifier
+      dockerfile: Dockerfile
+    container_name: jd-classifier-api
+    restart: unless-stopped
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/jd_role_classifier
+      MOCK_NLP: "false"
+      LOAD_CLASSIFIER: "false"
+      APP_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - portfolio-net
 
