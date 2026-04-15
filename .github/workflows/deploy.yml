@@ -20,3 +20,4 @@ jobs:
             cd /opt/sec-financial-intelligence && git pull origin main
             cd /opt/jd-role-classifier && git pull origin main
             cd /opt/portfolio-infra && docker compose up -d --build
+            docker exec portfolio-caddy caddy reload --config /etc/caddy/Caddyfile
