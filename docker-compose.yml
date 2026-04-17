@@ -70,6 +70,52 @@ services:
       - shopify-metaobjects-webhook
       - sec-finint-api
       - jd-classifier-api
+      - wordpress
+
+  # ── Headless WordPress CMS ───────────────────────────────────────────────────
+
+  wordpress-db:
+    image: mysql:8.0
+    container_name: portfolio-wordpress-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: ${WP_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${WP_DB_ROOT_PASSWORD}
+    volumes:
+      - wordpress_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - portfolio-net
+
+  wordpress:
+    image: wordpress:php8.3-apache
+    container_name: portfolio-wordpress
+    restart: unless-stopped
+    environment:
+      WORDPRESS_DB_HOST: wordpress-db
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: ${WP_DB_PASSWORD}
+      WORDPRESS_TABLE_PREFIX: wp_
+      WORDPRESS_CONFIG_EXTRA: |
+        define('HEADLESS_API_TOKEN', '${WP_HEADLESS_API_TOKEN}');
+        define('NEXT_REVALIDATE_URL', '${WP_NEXT_REVALIDATE_URL}');
+        define('REVALIDATION_SECRET', '${WP_REVALIDATION_SECRET}');
+        define('WP_HOME', 'https://cms.${DOMAIN}');
+        define('WP_SITEURL', 'https://cms.${DOMAIN}');
+    volumes:
+      - wordpress_data:/var/www/html
+    depends_on:
+      wordpress-db:
+        condition: service_healthy
+    networks:
+      - portfolio-net
 
   # ── Compensation Ingest API (Django + Celery) ─────────────────────────────────
 
@@ -336,6 +382,8 @@ volumes:
   redis_data:
   caddy_data:
   caddy_config:
+  wordpress_data:
+  wordpress_db:
 
 networks:
   portfolio-net:
