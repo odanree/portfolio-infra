@@ -6,6 +6,11 @@
     email {$CADDY_EMAIL}
 }
 
+# ── Headless WordPress CMS ───────────────────────────────────────────────────
+cms.{$DOMAIN} {
+    reverse_proxy wordpress:80
+}
+
 # ── Compensation Ingest API ───────────────────────────────────────────────────
 compensation-ingest.{$DOMAIN} {
     reverse_proxy compensation-ingest-api:8000
