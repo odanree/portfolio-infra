@@ -366,8 +366,9 @@ services:
       VLM_BACKEND: claude
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY_DETECTOR}
       RTSP_URL: ${PED_RTSP_URL:-}
-      VIDEO_PATH: ${PED_VIDEO_PATH:-}
-      VIDEO_LOOP: ${PED_VIDEO_LOOP:-false}
+      VIDEO_PATH: /app/demo
+      VIDEO_LOOP: "true"
+      INITIAL_PAUSED: "true"
       YOLO_MODEL: yolov8n.pt
       INFERENCE_THRESHOLD: "0.20"
       INPUT_WIDTH: "1280"
@@ -379,6 +380,7 @@ services:
       SMTP_PASS: ${PED_SMTP_PASS:-}
     volumes:
       - ../parking-enforcement-detector/config:/app/config
+      - /opt/demo-videos:/app/demo:ro
       - ped_snapshots:/app/snapshots
       - ped_logs:/app/logs
     networks:
