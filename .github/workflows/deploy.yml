@@ -19,5 +19,6 @@ jobs:
             cd /opt/portfolio-infra && git pull origin master
             cd /opt/sec-financial-intelligence && git pull origin main
             cd /opt/jd-role-classifier && git pull origin main
+            cd /opt/parking-enforcement-detector && git pull origin main
             cd /opt/portfolio-infra && docker compose up -d --build
             docker exec portfolio-caddy caddy reload --config /etc/caddy/Caddyfile
