@@ -373,6 +373,7 @@ services:
       INPUT_WIDTH: "1280"
       INPUT_HEIGHT: "720"
       LOG_LEVEL: INFO
+      DEMO_MODE: "true"
       ALERT_EMAIL: ${PED_ALERT_EMAIL:-}
       SMTP_USER: ${PED_SMTP_USER:-}
       SMTP_PASS: ${PED_SMTP_PASS:-}
