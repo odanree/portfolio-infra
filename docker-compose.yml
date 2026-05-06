@@ -363,8 +363,7 @@ services:
     container_name: parking-detector
     restart: unless-stopped
     environment:
-      VLM_BACKEND: claude
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY_DETECTOR}
+      VLM_BACKEND: mock
       RTSP_URL: ${PED_RTSP_URL:-}
       VIDEO_PATH: /app/demo
       VIDEO_LOOP: "true"
