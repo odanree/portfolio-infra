@@ -382,6 +382,8 @@ services:
       - /opt/demo-videos:/app/demo:ro
       - ped_snapshots:/app/snapshots
       - ped_logs:/app/logs
+      - ped_dataset:/app/dataset
+      - ped_vectors:/app/data/vectors
     networks:
       - portfolio-net
     # Uncomment on a GPU server:
@@ -424,6 +426,8 @@ volumes:
   wordpress_db:
   ped_snapshots:
   ped_logs:
+  ped_dataset:
+  ped_vectors:
 
 networks:
   portfolio-net:
