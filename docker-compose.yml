@@ -260,6 +260,11 @@ services:
     container_name: shopify-order-agent-worker
     restart: unless-stopped
     command: python -m app.worker
+    # The shared image's HEALTHCHECK curls :8000/health, but the worker runs no
+    # web server, so it would always report unhealthy. Disable it — the worker
+    # is PID 1 under restart: unless-stopped, so a dead process is recreated.
+    healthcheck:
+      disable: true
     environment:
       DATABASE_URL: postgresql+asyncpg://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/order_exception_agent
       REDIS_URL: redis://redis:6379/1
