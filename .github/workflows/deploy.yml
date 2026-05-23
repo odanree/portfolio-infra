@@ -3,6 +3,7 @@ name: Deploy
 on:
   push:
     branches: [master]
+  workflow_dispatch: {}   # allow manual re-deploy from the Actions tab
 
 jobs:
   deploy:
@@ -16,9 +17,25 @@ jobs:
           key: ${{ secrets.VPS_DEPLOY_KEY }}
           known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
           script: |
+            # Fail the deploy on ANY error. Without this, a mid-script failure
+            # (e.g. a build error) is swallowed and the workflow reports success
+            # while containers keep running stale images — which is exactly how a
+            # pushed fix silently failed to deploy.
+            set -euo pipefail
+
             cd /opt/portfolio-infra && git pull origin master
             cd /opt/sec-financial-intelligence && git pull origin main
             cd /opt/jd-role-classifier && git pull origin main
             cd /opt/parking-enforcement-detector && git pull origin master
-            cd /opt/portfolio-infra && docker compose up -d --build
+
+            cd /opt/portfolio-infra
+            # Build as an explicit step so a build failure aborts here (visible in
+            # the run) instead of being hidden inside `up`. --pull refreshes base
+            # images; the COPY layer invalidates on pulled code changes, so changed
+            # services get a fresh image and `up -d` then recreates them.
+            docker compose build --pull
+            docker compose up -d --remove-orphans
             docker exec portfolio-caddy caddy reload --config /etc/caddy/Caddyfile
+
+            # Surface what's actually running so a stale image is obvious in logs.
+            docker compose ps --format 'table {{.Name}}\t{{.Status}}\t{{.Image}}'
