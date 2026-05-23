@@ -3,7 +3,12 @@ name: Deploy
 on:
   push:
     branches: [master]
-  workflow_dispatch: {}   # allow manual re-deploy from the Actions tab
+  workflow_dispatch:
+    inputs:
+      rebuild_all:
+        description: "Rebuild every service regardless of what changed"
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -11,12 +16,16 @@ jobs:
     steps:
       - name: SSH and deploy
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          FORCE_REBUILD: ${{ inputs.rebuild_all }}
         with:
           host: 65.108.243.192
           username: root
           key: ${{ secrets.VPS_DEPLOY_KEY }}
           known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
-          # Rebuilding several heavy services (CUDA torch, frontends) takes a
+          envs: FORCE_REBUILD
+          # A scoped deploy normally rebuilds at most one service, but a forced
+          # full rebuild (or a parking-detector CUDA/frontend build) can take a
           # while; the default 10m command timeout is too short.
           command_timeout: 30m
           script: |
@@ -26,20 +35,65 @@ jobs:
             # is exactly how a pushed fix silently failed to deploy.
             set -euo pipefail
 
-            cd /opt/portfolio-infra && git pull origin master
-            cd /opt/sec-financial-intelligence && git pull origin main
-            cd /opt/jd-role-classifier && git pull origin main
-            cd /opt/parking-enforcement-detector && git pull origin master
+            # Map each app repo to its compose service. portfolio-infra is the
+            # compose file itself, handled separately (config-only recreate).
+            declare -A REPO_BRANCH=(
+              ["/opt/portfolio-infra"]="master"
+              ["/opt/sec-financial-intelligence"]="main"
+              ["/opt/jd-role-classifier"]="main"
+              ["/opt/parking-enforcement-detector"]="master"
+            )
+            declare -A REPO_SVC=(
+              ["/opt/sec-financial-intelligence"]="sec-finint-api"
+              ["/opt/jd-role-classifier"]="jd-classifier-api"
+              ["/opt/parking-enforcement-detector"]="parking-detector"
+            )
+
+            # Pull every repo, recording which ones actually moved. Rebuilding
+            # the whole stack on every push is what caused the disk-full and
+            # command-timeout failures — a one-line fix to one app should not
+            # rebuild CUDA torch for an unrelated service.
+            REBUILD=""
+            INFRA_CHANGED=0
+            for dir in "${!REPO_BRANCH[@]}"; do
+              cd "$dir"
+              before=$(git rev-parse HEAD)
+              git pull origin "${REPO_BRANCH[$dir]}"
+              after=$(git rev-parse HEAD)
+              [ "$before" = "$after" ] && continue
+              if [ "$dir" = "/opt/portfolio-infra" ]; then
+                INFRA_CHANGED=1
+              else
+                REBUILD="$REBUILD ${REPO_SVC[$dir]}"
+              fi
+            done
 
             cd /opt/portfolio-infra
-            # Free dangling layers/cache first so heavy rebuilds don't hit the
-            # disk wall (volumes are preserved — only unused build artifacts go).
-            docker builder prune -f >/dev/null 2>&1 || true
 
-            # Cache-based rebuild + recreate. --build rebuilds changed services
-            # (COPY layer invalidates on pulled code); set -e makes any build
-            # failure fail the deploy loudly instead of leaving a stale image.
-            docker compose up -d --build --remove-orphans
+            if [ "${FORCE_REBUILD:-}" = "true" ]; then
+              echo ">> Manual full rebuild requested"
+              docker builder prune -f >/dev/null 2>&1 || true
+              docker compose up -d --build --remove-orphans
+            else
+              if [ -n "$REBUILD" ]; then
+                echo ">> Rebuilding changed services:$REBUILD"
+                # Free dangling layers first so heavy rebuilds don't hit the disk
+                # wall (volumes are preserved — only unused build artifacts go).
+                docker builder prune -f >/dev/null 2>&1 || true
+                docker compose up -d --build --remove-orphans $REBUILD
+              fi
+              if [ "$INFRA_CHANGED" = "1" ]; then
+                # Compose file moved: recreate containers whose definition changed.
+                # No --build, so unchanged service images are reused (cheap).
+                echo ">> portfolio-infra changed — applying compose config"
+                docker compose up -d --remove-orphans
+              fi
+              if [ -z "$REBUILD" ] && [ "$INFRA_CHANGED" = "0" ]; then
+                echo ">> No source changes — ensuring stack is up"
+                docker compose up -d --remove-orphans
+              fi
+            fi
+
             docker exec portfolio-caddy caddy reload --config /etc/caddy/Caddyfile
 
             # Surface what's actually running so a stale image is obvious in logs.
