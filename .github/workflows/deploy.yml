@@ -42,11 +42,16 @@ jobs:
               ["/opt/sec-financial-intelligence"]="main"
               ["/opt/jd-role-classifier"]="main"
               ["/opt/parking-enforcement-detector"]="master"
+              ["/opt/oc-realestate-intel"]="master"
             )
             declare -A REPO_SVC=(
               ["/opt/sec-financial-intelligence"]="sec-finint-api"
               ["/opt/jd-role-classifier"]="jd-classifier-api"
               ["/opt/parking-enforcement-detector"]="parking-detector"
+              # oci has two build targets: api (FastAPI + model) and web (Next.js).
+              # Both share a repo so any push rebuilds both — small risk of
+              # over-building, but a misplaced fix to either side is rare.
+              ["/opt/oc-realestate-intel"]="oci-api oci-web"
             )
 
             # Pull every repo, recording which ones actually moved. Rebuilding
