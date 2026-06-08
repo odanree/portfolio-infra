@@ -58,9 +58,33 @@ jobs:
             # the whole stack on every push is what caused the disk-full and
             # command-timeout failures — a one-line fix to one app should not
             # rebuild CUDA torch for an unrelated service.
+            # Map each repo dir to its github repo so the loop can auto-clone
+            # a new project the first time it appears in REPO_BRANCH. Without
+            # this the workflow errors with "No such file or directory" until
+            # someone manually ssh's in to clone — which I just hit on the oci
+            # first deploy.
+            declare -A REPO_URL=(
+              ["/opt/portfolio-infra"]="https://github.com/odanree/portfolio-infra.git"
+              ["/opt/sec-financial-intelligence"]="https://github.com/odanree/sec-financial-intelligence.git"
+              ["/opt/jd-role-classifier"]="https://github.com/odanree/jd-role-classifier.git"
+              ["/opt/parking-enforcement-detector"]="https://github.com/odanree/parking-enforcement-detector.git"
+              ["/opt/oc-realestate-intel"]="https://github.com/odanree/oc-realestate-intel.git"
+            )
+
             REBUILD=""
             INFRA_CHANGED=0
             for dir in "${!REPO_BRANCH[@]}"; do
+              if [ ! -d "$dir/.git" ]; then
+                echo ">> Cloning ${REPO_URL[$dir]} into $dir (first deploy)"
+                git clone --branch "${REPO_BRANCH[$dir]}" "${REPO_URL[$dir]}" "$dir"
+                # Treat as a fresh build so the new service goes up immediately.
+                if [ "$dir" = "/opt/portfolio-infra" ]; then
+                  INFRA_CHANGED=1
+                else
+                  REBUILD="$REBUILD ${REPO_SVC[$dir]}"
+                fi
+                continue
+              fi
               cd "$dir"
               before=$(git rev-parse HEAD)
               git pull origin "${REPO_BRANCH[$dir]}"
