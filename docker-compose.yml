@@ -338,7 +338,10 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+asyncpg://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/portfolio_issues_agent
-      REDIS_URL: redis://redis:6379/3
+      # langgraph-checkpoint-redis uses RediSearch (FT.*), which can only
+      # create indexes on Redis db 0. Other compose services already split
+      # across /1, /2 — /0 was unallocated so we land there.
+      REDIS_URL: redis://redis:6379/0
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY_ISSUES}
       AGENT_MODEL: ${PORTFOLIO_ISSUES_AGENT_MODEL:-claude-sonnet-4-6}
       BEACON_API_URL: ${BEACON_API_URL:-https://beacon.${DOMAIN}}

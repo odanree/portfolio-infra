@@ -126,7 +126,17 @@ jobs:
               fi
             fi
 
-            docker exec portfolio-caddy caddy reload --config /etc/caddy/Caddyfile
+            # Caddy's admin API on :2019 can take a beat to bind after a
+            # container recreate, so the reload can race and fail with
+            # "connect: connection refused". Retry briefly so the deploy
+            # doesn't go red on a spurious timing issue.
+            for attempt in 1 2 3 4 5; do
+              if docker exec portfolio-caddy caddy reload --config /etc/caddy/Caddyfile; then
+                break
+              fi
+              echo ">> caddy reload attempt $attempt failed, retrying..."
+              sleep 2
+            done
 
             # Surface what's actually running so a stale image is obvious in logs.
             docker compose ps --format 'table {{.Name}}\t{{.Status}}\t{{.Image}}'
