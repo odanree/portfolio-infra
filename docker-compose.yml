@@ -29,10 +29,16 @@ services:
       - portfolio-net
 
   redis:
-    image: redis:7-alpine
+    # Redis Stack is a superset of base Redis — same wire protocol, same
+    # data dir, plus the RediSearch/JSON modules that langgraph-checkpoint-redis
+    # needs (FT.* commands). Without it, portfolio-issues-agent and
+    # shopify-inventory-agent both fell back to in-memory checkpointers and
+    # lost HITL state across container restarts.
+    image: redis/redis-stack-server:7.4.0-v3
     container_name: portfolio-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --appendfsync everysec --maxmemory 256mb --maxmemory-policy allkeys-lru
+    environment:
+      REDIS_ARGS: --appendonly yes --appendfsync everysec --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     healthcheck:
@@ -51,7 +57,12 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Bind-mount the directory, not the Caddyfile itself. git pull rewrites
+      # the file by rename, which leaves a bind-mounted FILE pointing at the
+      # old inode — a subsequent `caddy reload` then reads the stale file.
+      # Mounting the directory keeps the inode stable so reloads always see
+      # the current contents.
+      - ./caddy:/etc/caddy:ro
       - caddy_data:/data
       - caddy_config:/config
     environment:
@@ -338,6 +349,7 @@ services:
       SLACK_CHANNEL_ID: ${PORTFOLIO_ISSUES_SLACK_CHANNEL_ID}
       AUDIT_CRON_DAY_OF_WEEK: ${PORTFOLIO_ISSUES_CRON_DAY_OF_WEEK:-sun}
       AUDIT_CRON_HOUR: ${PORTFOLIO_ISSUES_CRON_HOUR:-9}
+      MAX_PROPOSALS_PER_RUN: ${PORTFOLIO_ISSUES_MAX_PROPOSALS_PER_RUN:-5}
       APP_ENV: production
     depends_on:
       postgres:
