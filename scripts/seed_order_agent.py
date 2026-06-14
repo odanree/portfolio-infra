@@ -6,7 +6,7 @@ Computes valid HMAC-SHA256 signatures so the agent accepts them.
 
 Usage:
     export SHOPIFY_ORDER_WEBHOOK_SECRET=your_secret
-    export ORDER_AGENT_URL=https://shopify-orders.yourdomain.com   # optional
+    export ORDER_AGENT_URL=https://shopify-orders.yourdomain.com   # required
 
     python seed_order_agent.py              # run all scenarios
     python seed_order_agent.py fraud        # run one scenario
@@ -29,7 +29,7 @@ except ImportError:
     print("Missing dependency: pip install httpx")
     sys.exit(1)
 
-BASE_URL = os.getenv("ORDER_AGENT_URL", "https://shopify-orders.danhle.net")
+BASE_URL = os.getenv("ORDER_AGENT_URL", "https://shopify-orders.example.com")
 WEBHOOK_SECRET = os.getenv("SHOPIFY_ORDER_WEBHOOK_SECRET", "")
 SHOP_DOMAIN = os.getenv("SHOPIFY_ORDER_STORE_DOMAIN", "demo-store.myshopify.com")
 

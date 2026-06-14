@@ -10,7 +10,7 @@ To use a Redis-pinned baseline instead, set one first:
 
 Usage:
     export SHOPIFY_INVENTORY_WEBHOOK_SECRET=your_secret
-    export INVENTORY_AGENT_URL=https://shopify-inventory.yourdomain.com   # optional
+    export INVENTORY_AGENT_URL=https://shopify-inventory.yourdomain.com   # required
 
     python seed_inventory_agent.py              # run default scenario
     python seed_inventory_agent.py --list       # list scenarios
@@ -33,7 +33,7 @@ except ImportError:
     print("Missing dependency: pip install httpx")
     sys.exit(1)
 
-BASE_URL = os.getenv("INVENTORY_AGENT_URL", "https://shopify-inventory.danhle.net")
+BASE_URL = os.getenv("INVENTORY_AGENT_URL", "https://shopify-inventory.example.com")
 WEBHOOK_SECRET = os.getenv("SHOPIFY_INVENTORY_WEBHOOK_SECRET", "")
 SHOP_DOMAIN = os.getenv("SHOPIFY_INVENTORY_STORE_DOMAIN", "demo-store.myshopify.com")
 

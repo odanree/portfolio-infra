@@ -70,9 +70,9 @@ services:
       CADDY_EMAIL: ${CADDY_EMAIL}
     networks:
       - portfolio-net
-      - lumen_lumen-net
-      - adu-dashboard_adu-net
-      - beacon_jsp-net
+      - external-net-1
+      - external-net-2
+      - external-net-3
     depends_on:
       - compensation-ingest-api
       - compensation-explorer-api
@@ -571,9 +571,12 @@ volumes:
 networks:
   portfolio-net:
     driver: bridge
-  lumen_lumen-net:
+  external-net-1:
     external: true
-  adu-dashboard_adu-net:
+    name: ${EXTERNAL_NET_1}
+  external-net-2:
     external: true
-  beacon_jsp-net:
+    name: ${EXTERNAL_NET_2}
+  external-net-3:
     external: true
+    name: ${EXTERNAL_NET_3}

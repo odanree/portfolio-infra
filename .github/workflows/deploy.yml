@@ -19,7 +19,7 @@ jobs:
         env:
           FORCE_REBUILD: ${{ inputs.rebuild_all }}
         with:
-          host: 65.108.243.192
+          host: ${{ secrets.VPS_HOST }}
           username: root
           key: ${{ secrets.VPS_DEPLOY_KEY }}
           known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
