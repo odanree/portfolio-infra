@@ -50,6 +50,18 @@ shopify-metaobjects.{$DOMAIN} {
     reverse_proxy shopify-metaobjects-webhook:3000
 }
 
+# ── Portfolio Issues Agent (Slack webhook handler only) ──────────────────────
+# We only need Slack to hit /api/slack/actions; the audit trigger is internal
+# (APScheduler) and /api/audits/run is exposed for occasional manual kicks.
+portfolio-issues.{$DOMAIN} {
+    reverse_proxy portfolio-issues-agent:8000
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
 # ── Existing projects (Caddy joined to their Docker networks directly) ─────────
 
 lumen.{$DOMAIN} {

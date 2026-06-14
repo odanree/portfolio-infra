@@ -10,6 +10,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${PORTFOLIO_DB_PASSWORD}
       PORTFOLIO_DB_PASSWORD: ${PORTFOLIO_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:15434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d:ro
@@ -68,6 +70,7 @@ services:
       - shopify-order-agent
       - shopify-inventory-agent
       - shopify-metaobjects-webhook
+      - portfolio-issues-agent
       - sec-finint-api
       - jd-classifier-api
       - oci-api
@@ -305,6 +308,37 @@ services:
       SLACK_WEBHOOK_URL: ${SHOPIFY_INVENTORY_SLACK_WEBHOOK_URL}
       SLACK_SIGNING_SECRET: ${SHOPIFY_INVENTORY_SLACK_SIGNING_SECRET}
       AGENT_MODE: shadow
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - portfolio-net
+
+  # ── Portfolio Issues Agent (LangGraph + Slack HITL → GitHub issues) ──────────
+
+  portfolio-issues-agent:
+    build:
+      context: ../portfolio-issues-agent
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: portfolio-issues-agent
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/portfolio_issues_agent
+      REDIS_URL: redis://redis:6379/3
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY_ISSUES}
+      AGENT_MODEL: ${PORTFOLIO_ISSUES_AGENT_MODEL:-claude-sonnet-4-6}
+      BEACON_API_URL: ${BEACON_API_URL:-https://beacon.${DOMAIN}}
+      BEACON_JWT: ${PORTFOLIO_ISSUES_BEACON_JWT}
+      GITHUB_TOKEN: ${PORTFOLIO_ISSUES_GITHUB_TOKEN}
+      SLACK_BOT_TOKEN: ${PORTFOLIO_ISSUES_SLACK_BOT_TOKEN}
+      SLACK_SIGNING_SECRET: ${PORTFOLIO_ISSUES_SLACK_SIGNING_SECRET}
+      SLACK_CHANNEL_ID: ${PORTFOLIO_ISSUES_SLACK_CHANNEL_ID}
+      AUDIT_CRON_DAY_OF_WEEK: ${PORTFOLIO_ISSUES_CRON_DAY_OF_WEEK:-sun}
+      AUDIT_CRON_HOUR: ${PORTFOLIO_ISSUES_CRON_HOUR:-9}
+      APP_ENV: production
     depends_on:
       postgres:
         condition: service_healthy
