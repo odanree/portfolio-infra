@@ -2,15 +2,16 @@
 # TLS is handled automatically via Let's Encrypt.
 # Set DOMAIN in .env (e.g., DOMAIN=yourdomain.com).
 #
-# Architecture: two Hetzner VPSes, portfolio-caddy on VPS A is the single
-# public ingress. See docs/adr/0001-routing-architecture.md.
+# Architecture: single primary host runs portfolio-caddy as the public
+# ingress, plus multiple independent compose projects sharing a docker
+# network. See docs/adr/0001-routing-architecture.md.
 
 {
     email {$CADDY_EMAIL}
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LOCAL ROUTES — targets live on this host (Hetzner, 65.108.243.192).
+# LOCAL ROUTES — targets live in portfolio-infra's own compose project.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Headless WordPress CMS ───────────────────────────────────────────────────
@@ -142,7 +143,7 @@ lineage.{$DOMAIN} {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LOCAL ROUTES — targets live on this host (Hetzner, 65.108.243.192).
+# LOCAL ROUTES (continued) — targets live in portfolio-infra's own compose.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Parking Enforcement Detector ─────────────────────────────────────────────
