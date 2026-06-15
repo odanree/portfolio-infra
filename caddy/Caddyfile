@@ -10,7 +10,7 @@
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LOCAL ROUTES — targets live on this VPS (VPS A, 65.108.243.192).
+# LOCAL ROUTES — targets live on this host (Hetzner, 65.108.243.192).
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Headless WordPress CMS ───────────────────────────────────────────────────
@@ -70,8 +70,10 @@ portfolio-issues.{$DOMAIN} {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CROSS-HOST ROUTES — targets live on VPS B, reached via overlay network.
-# Adding/changing these requires the corresponding container to exist on VPS B.
+# CROSS-PROJECT ROUTES — targets live in other compose projects on the same
+# host (Beacon, Lumen, ADU, etc), reached via the shared docker network.
+# Adding/changing these requires the corresponding container to be running
+# in its own compose project.
 # See docs/adr/0001-routing-architecture.md for the two-VPS architecture.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -125,8 +127,9 @@ grafana-beacon.{$DOMAIN} {
     redir https://grafana.{$DOMAIN}{uri} permanent
 }
 
-# Marquez — Beacon's data lineage UI (OpenLineage backend).
-# Reachable across the overlay network at beacon-marquez-web:3000.
+# Marquez — Beacon's data lineage UI (OpenLineage backend). Lives in
+# Beacon's compose project; reachable on the shared docker network as
+# beacon-marquez-web:3000.
 # Auth: gated by Cloudflare Access policy (see docs/adr/0001-routing-architecture.md).
 # UI shows pipeline metadata only — no scraped job descriptions or user data.
 lineage.{$DOMAIN} {
@@ -139,7 +142,7 @@ lineage.{$DOMAIN} {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LOCAL ROUTES — targets live on this VPS (VPS A, 65.108.243.192).
+# LOCAL ROUTES — targets live on this host (Hetzner, 65.108.243.192).
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Parking Enforcement Detector ─────────────────────────────────────────────
