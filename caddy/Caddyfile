@@ -1,10 +1,17 @@
 # Caddy reverse proxy for all portfolio projects.
 # TLS is handled automatically via Let's Encrypt.
 # Set DOMAIN in .env (e.g., DOMAIN=yourdomain.com).
+#
+# Architecture: two Hetzner VPSes, portfolio-caddy on VPS A is the single
+# public ingress. See docs/adr/0001-routing-architecture.md.
 
 {
     email {$CADDY_EMAIL}
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOCAL ROUTES — targets live on this VPS (VPS A, 65.108.243.192).
+# ─────────────────────────────────────────────────────────────────────────────
 
 # ── Headless WordPress CMS ───────────────────────────────────────────────────
 cms.{$DOMAIN} {
@@ -62,7 +69,11 @@ portfolio-issues.{$DOMAIN} {
     }
 }
 
-# ── Existing projects (Caddy joined to their Docker networks directly) ─────────
+# ─────────────────────────────────────────────────────────────────────────────
+# CROSS-HOST ROUTES — targets live on VPS B, reached via overlay network.
+# Adding/changing these requires the corresponding container to exist on VPS B.
+# See docs/adr/0001-routing-architecture.md for the two-VPS architecture.
+# ─────────────────────────────────────────────────────────────────────────────
 
 lumen.{$DOMAIN} {
     handle /api/ping {
@@ -113,6 +124,23 @@ beacon.{$DOMAIN} {
 grafana-beacon.{$DOMAIN} {
     redir https://grafana.{$DOMAIN}{uri} permanent
 }
+
+# Marquez — Beacon's data lineage UI (OpenLineage backend).
+# Reachable across the overlay network at beacon-marquez-web:3000.
+# Auth: gated by Cloudflare Access policy (see docs/adr/0001-routing-architecture.md).
+# UI shows pipeline metadata only — no scraped job descriptions or user data.
+lineage.{$DOMAIN} {
+    reverse_proxy beacon-marquez-web:3000
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOCAL ROUTES — targets live on this VPS (VPS A, 65.108.243.192).
+# ─────────────────────────────────────────────────────────────────────────────
 
 # ── Parking Enforcement Detector ─────────────────────────────────────────────
 ped.{$DOMAIN} {
