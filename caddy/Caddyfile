@@ -128,20 +128,6 @@ grafana-beacon.{$DOMAIN} {
     redir https://grafana.{$DOMAIN}{uri} permanent
 }
 
-# Marquez — Beacon's data lineage UI (OpenLineage backend). Lives in
-# Beacon's compose project; reachable on the shared docker network as
-# beacon-marquez-web:3000.
-# Auth: gated by Cloudflare Access policy (see docs/adr/0001-routing-architecture.md).
-# UI shows pipeline metadata only — no scraped job descriptions or user data.
-lineage.{$DOMAIN} {
-    reverse_proxy beacon-marquez-web:3000
-    header {
-        X-Frame-Options DENY
-        X-Content-Type-Options nosniff
-        Referrer-Policy strict-origin-when-cross-origin
-    }
-}
-
 # ─────────────────────────────────────────────────────────────────────────────
 # LOCAL ROUTES (continued) — targets live in portfolio-infra's own compose.
 # ─────────────────────────────────────────────────────────────────────────────
