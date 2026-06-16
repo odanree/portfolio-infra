@@ -132,16 +132,6 @@ grafana-beacon.{$DOMAIN} {
 # LOCAL ROUTES (continued) — targets live in portfolio-infra's own compose.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# ── Parking Enforcement Detector ─────────────────────────────────────────────
-ped.{$DOMAIN} {
-    reverse_proxy parking-detector:8000
-    header {
-        X-Frame-Options DENY
-        X-Content-Type-Options nosniff
-        Referrer-Policy strict-origin-when-cross-origin
-    }
-}
-
 # ── SEC Financial Intelligence API ───────────────────────────────────────────
 sec-finint.{$DOMAIN} {
     reverse_proxy sec-finint-api:8000
