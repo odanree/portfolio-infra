@@ -1,0 +1,20 @@
+# Local provider cache and working state — recreated by `terraform init`
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Override files — local-only adjustments shouldn't land in version control
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI plan files
+plan.out
+*.tfplan
