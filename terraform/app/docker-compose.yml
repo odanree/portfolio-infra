@@ -1,0 +1,79 @@
+# Marquez stack + Caddy, deployed to the Terraform-managed EC2 host.
+#
+# Caddy fronts TLS for lineage.danhle.net (and eventually oci.danhle.net once
+# oc-realestate-intel lands on this box too — see ../../README.md "Future
+# work"). All services join the `web` network so a future oci compose can
+# attach the same external network and Caddy will resolve its services.
+
+services:
+  marquez-db:
+    image: postgres:16
+    container_name: marquez-db
+    environment:
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+      POSTGRES_DB: marquez
+    volumes:
+      - marquez_db_data:/var/lib/postgresql/data
+    networks:
+      - web
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marquez -d marquez"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  marquez:
+    image: marquezproject/marquez:0.50.0
+    container_name: marquez
+    environment:
+      MARQUEZ_PORT: 5000
+      MARQUEZ_ADMIN_PORT: 5001
+      POSTGRES_HOST: marquez-db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: marquez
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+    networks:
+      - web
+    depends_on:
+      marquez-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  marquez-web:
+    image: marquezproject/marquez-web:0.50.0
+    container_name: marquez-web
+    environment:
+      MARQUEZ_HOST: marquez
+      MARQUEZ_PORT: 5000
+      WEB_PORT: 3000
+    networks:
+      - web
+    depends_on:
+      - marquez
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web
+    restart: unless-stopped
+
+networks:
+  web:
+    name: web
+
+volumes:
+  marquez_db_data:
+  caddy_data:
+  caddy_config:

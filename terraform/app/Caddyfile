@@ -1,0 +1,48 @@
+{
+    email admin@danhle.net
+}
+
+# Marquez — OpenLineage backend for Beacon's data-lineage events.
+# `/api/*` routes to the Java backend (port 5000), everything else to the
+# Node-based UI (port 3000). marquez-web internally re-proxies API calls
+# already, but routing at Caddy means we get clean per-path metrics and
+# the API is reachable without the UI being up.
+lineage.danhle.net {
+    handle /api/* {
+        reverse_proxy marquez:5000
+    }
+    handle {
+        reverse_proxy marquez-web:3000
+    }
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
+# oc-realestate-intel — FastAPI agent + Next.js chat UI + SSE streaming.
+# Deployed via oci-compose.yml as a separate compose project on the same
+# `web` network so Caddy can resolve service names across project
+# boundaries.
+oci.danhle.net {
+    handle /api/* {
+        reverse_proxy oci-api:8000 {
+            # SSE streams (/api/v1/query/stream): don't buffer, keep
+            # connections open for the LLM-token-by-token UX.
+            flush_interval -1
+            transport http {
+                read_timeout 5m
+                write_timeout 5m
+            }
+        }
+    }
+    handle {
+        reverse_proxy oci-web:3000
+    }
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}

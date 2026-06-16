@@ -1,0 +1,121 @@
+# oc-realestate-intel stack — separate compose project so it can be
+# brought up/down independently of Marquez. Joins the shared `web`
+# network so Caddy in ../docker-compose.yml can reach oci-api:8000
+# and oci-web:3000 across compose-project boundaries.
+#
+# Build contexts assume the oc-realestate-intel repo is cloned at
+# /home/ubuntu/oc-realestate-intel on the EC2.
+#
+# Memory-tuned for t3.medium (4 GiB total host). JVM heaps and Postgres
+# shared_buffers are capped so the four stateful services + the FastAPI
+# worker fit alongside Marquez without swap thrash.
+
+services:
+  oci-postgres:
+    image: postgres:16-alpine
+    container_name: oci-postgres
+    environment:
+      POSTGRES_USER: oci
+      POSTGRES_PASSWORD: ${OCI_DB_PASSWORD}
+      POSTGRES_DB: oci
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - max_connections=50
+    volumes:
+      - oci_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oci"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - web
+    restart: unless-stopped
+
+  oci-qdrant:
+    image: qdrant/qdrant:v1.11.0
+    container_name: oci-qdrant
+    volumes:
+      - oci_qdrant_data:/qdrant/storage
+    networks:
+      - web
+    restart: unless-stopped
+
+  oci-neo4j:
+    image: neo4j:5.20-community
+    container_name: oci-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/${OCI_NEO4J_PASSWORD}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+      # Cap heap so JVM stays under 768 MB total (matches the Hetzner deploy)
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 256m
+    volumes:
+      - oci_neo4j_data:/data
+    networks:
+      - web
+    restart: unless-stopped
+
+  oci-api:
+    build:
+      context: /home/ubuntu/oc-realestate-intel
+      dockerfile: Dockerfile
+    container_name: oci-api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://oci:${OCI_DB_PASSWORD}@oci-postgres:5432/oci
+      QDRANT_URL: http://oci-qdrant:6333
+      QDRANT_COLLECTION: parcels
+      NEO4J_URI: bolt://oci-neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${OCI_NEO4J_PASSWORD}
+      ANTHROPIC_API_KEY: ${OCI_ANTHROPIC_API_KEY}
+      ANTHROPIC_MODEL: claude-sonnet-4-6
+      LANGFUSE_PUBLIC_KEY: ${OCI_LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${OCI_LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${OCI_LANGFUSE_HOST:-https://us.cloud.langfuse.com}
+      LOG_LEVEL: INFO
+      # 10k parcels across the four largest OC cities. Entrypoint script
+      # respects --skip-if-seeded so this is a no-op on container restart.
+      OCI_SEED_LIMIT: "10000"
+      OCI_SEED_WHERE: >-
+        (SITE_ADDRESS LIKE '%IRVINE%' OR SITE_ADDRESS LIKE '%NEWPORT BEACH%'
+         OR SITE_ADDRESS LIKE '%ANAHEIM%' OR SITE_ADDRESS LIKE '% ORANGE%')
+    depends_on:
+      oci-postgres:
+        condition: service_healthy
+      oci-qdrant:
+        condition: service_started
+      oci-neo4j:
+        condition: service_started
+    networks:
+      - web
+    restart: unless-stopped
+
+  oci-web:
+    build:
+      context: /home/ubuntu/oc-realestate-intel/web
+      dockerfile: Dockerfile
+      args:
+        # Next bakes NEXT_PUBLIC_* into the client bundle at build time.
+        # Same-origin so the browser hits the Caddy-terminated host.
+        NEXT_PUBLIC_API_BASE: https://oci.danhle.net
+    container_name: oci-web
+    depends_on:
+      - oci-api
+    networks:
+      - web
+    restart: unless-stopped
+
+networks:
+  web:
+    external: true
+
+volumes:
+  oci_postgres_data:
+  oci_qdrant_data:
+  oci_neo4j_data:
