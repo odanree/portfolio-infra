@@ -13,6 +13,7 @@ Internet
 │  solar-ingest.domain          → solar-ingest-api        │
 │  solar.domain                 → solar-cost-explorer-frontend │
 │                               ↘ /graphql/ → solar-cost-explorer-api │
+│  solar-advisor.domain         → solar-advisor-api       │
 │  shopify-erp.domain           → shopify-erp-app         │
 │  shopify-orders.domain        → shopify-order-agent     │
 │  shopify-inventory.domain     → shopify-inventory-agent │
@@ -63,6 +64,7 @@ Projects/
 ├── portfolio-infra/          ← this repo
 ├── solar-ingest-api/
 ├── solar-cost-explorer/
+├── solar-advisor-agent/
 ├── shopify-erp-integration/
 ├── shopify-order-exception-agent/
 ├── shopify-inventory-discrepancy-agent/
@@ -85,6 +87,7 @@ Create A records for all six subdomains pointing to your Hetzner server IP:
 ```
 solar-ingest.yourdomain.com         → <hetzner-ip>
 solar.yourdomain.com                → <hetzner-ip>
+solar-advisor.yourdomain.com        → <hetzner-ip>
 shopify-erp.yourdomain.com          → <hetzner-ip>
 shopify-orders.yourdomain.com       → <hetzner-ip>
 shopify-inventory.yourdomain.com    → <hetzner-ip>

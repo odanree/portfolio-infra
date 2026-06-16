@@ -38,6 +38,11 @@ solar.{$DOMAIN} {
     }
 }
 
+# ── Solar Advisor Agent ──────────────────────────────────────────────────────
+solar-advisor.{$DOMAIN} {
+    reverse_proxy solar-advisor-api:8000
+}
+
 # ── Shopify ERP Integration ───────────────────────────────────────────────────
 shopify-erp.{$DOMAIN} {
     reverse_proxy shopify-erp-app:3000

@@ -77,6 +77,7 @@ services:
       - solar-ingest-api
       - solar-cost-explorer-api
       - solar-cost-explorer-frontend
+      - solar-advisor-api
       - shopify-erp-app
       - shopify-order-agent
       - shopify-inventory-agent
@@ -175,6 +176,28 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - portfolio-net
+
+  # ── Solar Advisor Agent (LangGraph + FastAPI) ───────────────────────────────
+  # Composite-data agent. Calls Solar Cost Explorer GraphQL + NREL PVWatts +
+  # DSIRE + EIA to answer NL solar-economics questions.
+
+  solar-advisor-api:
+    build:
+      context: ../solar-advisor-agent
+      dockerfile: Dockerfile
+    container_name: solar-advisor-api
+    restart: unless-stopped
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      NREL_API_KEY: ${NREL_API_KEY}
+      EIA_API_KEY: ${EIA_API_KEY}
+      SOLAR_COST_GRAPHQL_URL: https://solar.${DOMAIN}/graphql/
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LOG_LEVEL: INFO
     networks:
       - portfolio-net
 
