@@ -409,50 +409,6 @@ services:
     networks:
       - portfolio-net
 
-  # ── Parking Enforcement Detector (FastAPI + YOLO + Claude VLM) ──────────────
-
-  parking-detector:
-    build:
-      context: ../parking-enforcement-detector
-    container_name: parking-detector
-    restart: unless-stopped
-    environment:
-      VLM_BACKEND: mock
-      RTSP_URL: ${PED_RTSP_URL:-}
-      VIDEO_PATH: /app/demo
-      VIDEO_LOOP: "true"
-      VIDEO_SPEED: "4"
-      INITIAL_PAUSED: "true"
-      YOLO_MODEL: yolov8n.pt
-      INFERENCE_THRESHOLD: "0.20"
-      INPUT_WIDTH: "1280"
-      INPUT_HEIGHT: "720"
-      LOG_LEVEL: INFO
-      DEMO_MODE: "true"
-      PE_WINDOW_ENABLED: "true"
-      PE_WINDOW_START: "8"
-      PE_WINDOW_END: "16"
-      ALERT_EMAIL: ${PED_ALERT_EMAIL:-}
-      SMTP_USER: ${PED_SMTP_USER:-}
-      SMTP_PASS: ${PED_SMTP_PASS:-}
-    volumes:
-      - ../parking-enforcement-detector/config:/app/config
-      - /opt/demo-videos:/app/demo:ro
-      - ped_snapshots:/app/snapshots
-      - ped_logs:/app/logs
-      - ped_dataset:/app/dataset
-      - ped_vectors:/app/data/vectors
-    networks:
-      - portfolio-net
-    # Uncomment on a GPU server:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-
   # ── JD Role Classifier API (FastAPI + spaCy + BERT + LoRA) ───────────────────
 
   jd-classifier-api:
@@ -482,10 +438,6 @@ volumes:
   caddy_config:
   wordpress_data:
   wordpress_db:
-  ped_snapshots:
-  ped_logs:
-  ped_dataset:
-  ped_vectors:
 
 networks:
   portfolio-net:
