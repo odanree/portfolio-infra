@@ -135,7 +135,7 @@ services:
 
   compensation-ingest-api:
     build:
-      context: ../compensation-ingest-api
+      context: ../solar-ingest-api
       dockerfile: Dockerfile
     container_name: compensation-ingest-api
     restart: unless-stopped
@@ -159,7 +159,7 @@ services:
 
   compensation-ingest-worker:
     build:
-      context: ../compensation-ingest-api
+      context: ../solar-ingest-api
       dockerfile: Dockerfile
     container_name: compensation-ingest-worker
     restart: unless-stopped
@@ -182,7 +182,7 @@ services:
 
   compensation-explorer-api:
     build:
-      context: ../compensation-benchmarking-explorer/backend
+      context: ../solar-cost-explorer/backend
       dockerfile: Dockerfile
     container_name: compensation-explorer-api
     restart: unless-stopped
@@ -205,7 +205,7 @@ services:
 
   compensation-explorer-frontend:
     build:
-      context: ../compensation-benchmarking-explorer/frontend
+      context: ../solar-cost-explorer/frontend
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_GRAPHQL_URL: https://solar.${DOMAIN}/graphql/

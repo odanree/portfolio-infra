@@ -61,8 +61,8 @@ All project repos must be checked out as siblings of this directory:
 ```
 Projects/
 ├── portfolio-infra/          ← this repo
-├── compensation-ingest-api/
-├── compensation-benchmarking-explorer/
+├── solar-ingest-api/
+├── solar-cost-explorer/
 ├── shopify-erp-integration/
 ├── shopify-order-exception-agent/
 ├── shopify-inventory-discrepancy-agent/
