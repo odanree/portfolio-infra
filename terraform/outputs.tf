@@ -16,8 +16,10 @@ output "ssh_command" {
 output "secrets_arns" {
   description = "Secrets Manager ARNs. Populate values with `aws secretsmanager put-secret-value`."
   value = {
-    anthropic = aws_secretsmanager_secret.anthropic_api_key.arn
-    langfuse  = aws_secretsmanager_secret.langfuse.arn
+    anthropic          = aws_secretsmanager_secret.anthropic_api_key.arn
+    langfuse           = aws_secretsmanager_secret.langfuse.arn
+    oci_db_password    = aws_secretsmanager_secret.oci_db_password.arn
+    oci_neo4j_password = aws_secretsmanager_secret.oci_neo4j_password.arn
   }
 }
 

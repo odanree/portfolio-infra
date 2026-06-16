@@ -21,21 +21,28 @@ lineage.danhle.net {
     }
 }
 
-# oc-realestate-intel slot — added in the next deploy round once the oci
-# stack lands on this box. Compose project: `oc-realestate-intel`, joining
-# the same external `web` network.
-#
-# oci.danhle.net {
-#     handle /api/* {
-#         reverse_proxy oci-api:8000 {
-#             flush_interval -1
-#             transport http {
-#                 read_timeout 5m
-#                 write_timeout 5m
-#             }
-#         }
-#     }
-#     handle {
-#         reverse_proxy oci-web:3000
-#     }
-# }
+# oc-realestate-intel — FastAPI agent + Next.js chat UI + SSE streaming.
+# Deployed via oci-compose.yml as a separate compose project on the same
+# `web` network so Caddy can resolve service names across project
+# boundaries.
+oci.danhle.net {
+    handle /api/* {
+        reverse_proxy oci-api:8000 {
+            # SSE streams (/api/v1/query/stream): don't buffer, keep
+            # connections open for the LLM-token-by-token UX.
+            flush_interval -1
+            transport http {
+                read_timeout 5m
+                write_timeout 5m
+            }
+        }
+    }
+    handle {
+        reverse_proxy oci-web:3000
+    }
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}

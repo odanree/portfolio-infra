@@ -23,3 +23,17 @@ resource "aws_secretsmanager_secret" "langfuse" {
   description             = "Langfuse public + secret keys + host (JSON)"
   recovery_window_in_days = 0
 }
+
+# oc-realestate-intel-specific secrets — Postgres password + Neo4j password.
+# Generated locally and put-secret-value'd in after `terraform apply`.
+resource "aws_secretsmanager_secret" "oci_db_password" {
+  name                    = "${var.tag_name}/oci-db-password"
+  description             = "oc-realestate-intel Postgres password (random; rotated by operator)"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret" "oci_neo4j_password" {
+  name                    = "${var.tag_name}/oci-neo4j-password"
+  description             = "oc-realestate-intel Neo4j password"
+  recovery_window_in_days = 0
+}
