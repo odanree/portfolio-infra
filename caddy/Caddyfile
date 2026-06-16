@@ -152,26 +152,3 @@ jd-classifier.{$DOMAIN} {
     reverse_proxy jd-classifier-api:8000
 }
 
-# ── OC Real Estate Intel (FastAPI + Next.js + SSE) ────────────────────────────
-# /api/* → FastAPI agent (incl. /api/v1/query and /api/v1/query/stream)
-# everything else → Next.js chat UI
-oci.{$DOMAIN} {
-    handle /api/* {
-        reverse_proxy oci-api:8000 {
-            # SSE streams: don't buffer, keep connections open.
-            flush_interval -1
-            transport http {
-                read_timeout 5m
-                write_timeout 5m
-            }
-        }
-    }
-    handle {
-        reverse_proxy oci-web:3000
-    }
-    header {
-        X-Frame-Options DENY
-        X-Content-Type-Options nosniff
-        Referrer-Policy strict-origin-when-cross-origin
-    }
-}

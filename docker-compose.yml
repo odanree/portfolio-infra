@@ -84,8 +84,6 @@ services:
       - portfolio-issues-agent
       - sec-finint-api
       - jd-classifier-api
-      - oci-api
-      - oci-web
       - wordpress
 
   # ── Headless WordPress CMS ───────────────────────────────────────────────────
@@ -477,83 +475,6 @@ services:
     networks:
       - portfolio-net
 
-  # ── OC Real Estate Intel (FastAPI + LangGraph + Next.js) ─────────────────────
-
-  oci-qdrant:
-    image: qdrant/qdrant:v1.11.0
-    container_name: oci-qdrant
-    restart: unless-stopped
-    volumes:
-      - oci_qdrant_data:/qdrant/storage
-    networks:
-      - portfolio-net
-
-  oci-neo4j:
-    image: neo4j:5.20-community
-    container_name: oci-neo4j
-    restart: unless-stopped
-    environment:
-      NEO4J_AUTH: neo4j/${OCI_NEO4J_PASSWORD}
-      NEO4J_PLUGINS: '["apoc"]'
-      NEO4J_dbms_security_procedures_unrestricted: apoc.*
-      NEO4J_server_memory_heap_initial__size: 256m
-      NEO4J_server_memory_heap_max__size: 512m
-      NEO4J_server_memory_pagecache_size: 256m
-    volumes:
-      - oci_neo4j_data:/data
-    networks:
-      - portfolio-net
-
-  oci-api:
-    build:
-      context: ../oc-realestate-intel
-      dockerfile: Dockerfile
-    container_name: oci-api
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql+asyncpg://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/oci
-      QDRANT_URL: http://oci-qdrant:6333
-      QDRANT_COLLECTION: parcels
-      NEO4J_URI: bolt://oci-neo4j:7687
-      NEO4J_USER: neo4j
-      NEO4J_PASSWORD: ${OCI_NEO4J_PASSWORD}
-      ANTHROPIC_API_KEY: ${OCI_ANTHROPIC_API_KEY}
-      ANTHROPIC_MODEL: claude-sonnet-4-6
-      LANGFUSE_PUBLIC_KEY: ${OCI_LANGFUSE_PUBLIC_KEY:-}
-      LANGFUSE_SECRET_KEY: ${OCI_LANGFUSE_SECRET_KEY:-}
-      LANGFUSE_HOST: ${OCI_LANGFUSE_HOST:-https://us.cloud.langfuse.com}
-      LOG_LEVEL: INFO
-      # 10k parcels across the four biggest OC cities. Entrypoint script
-      # respects --skip-if-seeded so this is a no-op on container restart.
-      OCI_SEED_LIMIT: "10000"
-      OCI_SEED_WHERE: >-
-        (SITE_ADDRESS LIKE '%IRVINE%' OR SITE_ADDRESS LIKE '%NEWPORT BEACH%'
-         OR SITE_ADDRESS LIKE '%ANAHEIM%' OR SITE_ADDRESS LIKE '% ORANGE%')
-    depends_on:
-      postgres:
-        condition: service_healthy
-      oci-qdrant:
-        condition: service_started
-      oci-neo4j:
-        condition: service_started
-    networks:
-      - portfolio-net
-
-  oci-web:
-    build:
-      context: ../oc-realestate-intel/web
-      dockerfile: Dockerfile
-      args:
-        # Build-time injection — Next bakes NEXT_PUBLIC_* into the client bundle.
-        # Same-origin so the browser hits the same domain Caddy already terminated.
-        NEXT_PUBLIC_API_BASE: https://oci.${DOMAIN}
-    container_name: oci-web
-    restart: unless-stopped
-    depends_on:
-      - oci-api
-    networks:
-      - portfolio-net
-
 volumes:
   postgres_data:
   redis_data:
@@ -565,8 +486,6 @@ volumes:
   ped_logs:
   ped_dataset:
   ped_vectors:
-  oci_qdrant_data:
-  oci_neo4j_data:
 
 networks:
   portfolio-net:

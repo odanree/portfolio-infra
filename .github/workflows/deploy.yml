@@ -42,17 +42,12 @@ jobs:
               ["/opt/sec-financial-intelligence"]="main"
               ["/opt/jd-role-classifier"]="main"
               ["/opt/parking-enforcement-detector"]="master"
-              ["/opt/oc-realestate-intel"]="master"
               ["/opt/portfolio-issues-agent"]="main"
             )
             declare -A REPO_SVC=(
               ["/opt/sec-financial-intelligence"]="sec-finint-api"
               ["/opt/jd-role-classifier"]="jd-classifier-api"
               ["/opt/parking-enforcement-detector"]="parking-detector"
-              # oci has two build targets: api (FastAPI + model) and web (Next.js).
-              # Both share a repo so any push rebuilds both — small risk of
-              # over-building, but a misplaced fix to either side is rare.
-              ["/opt/oc-realestate-intel"]="oci-api oci-web"
               ["/opt/portfolio-issues-agent"]="portfolio-issues-agent"
             )
 
@@ -70,7 +65,6 @@ jobs:
               ["/opt/sec-financial-intelligence"]="https://github.com/odanree/sec-financial-intelligence.git"
               ["/opt/jd-role-classifier"]="https://github.com/odanree/jd-role-classifier.git"
               ["/opt/parking-enforcement-detector"]="https://github.com/odanree/parking-enforcement-detector.git"
-              ["/opt/oc-realestate-intel"]="https://github.com/odanree/oc-realestate-intel.git"
               ["/opt/portfolio-issues-agent"]="https://github.com/odanree/portfolio-issues-agent.git"
             )
 
