@@ -10,9 +10,9 @@ Internet
     ▼
 ┌─────────────────────────────────────────────────────────┐
 │  Caddy (auto TLS via Let's Encrypt)                     │
-│  compensation-ingest.domain   → compensation-ingest-api │
-│  compensation-explorer.domain → explorer-frontend       │
-│                               ↘ /graphql/ → explorer-api│
+│  compensation-ingest.domain   → solar-ingest-api        │
+│  solar.domain                 → solar-cost-explorer-frontend │
+│                               ↘ /graphql/ → solar-cost-explorer-api │
 │  shopify-erp.domain           → shopify-erp-app         │
 │  shopify-orders.domain        → shopify-order-agent     │
 │  shopify-inventory.domain     → shopify-inventory-agent │
@@ -29,7 +29,7 @@ Internet
 └──────────────────────────────────────────────────────────┘
 
 Redis DB allocation:
-  db/0 → compensation-ingest (Celery broker + backend)
+  db/0 → solar-ingest (Celery broker + backend)
   db/1 → shopify-order-exception-agent
   db/2 → shopify-inventory-discrepancy-agent
   db/3 → (reserved)
@@ -43,8 +43,8 @@ Redis DB allocation:
 | portfolio-postgres | ~150 MB |
 | portfolio-redis | ~50 MB |
 | Caddy | ~30 MB |
-| compensation-ingest-api + worker | ~400 MB |
-| compensation-explorer-api + frontend | ~350 MB |
+| solar-ingest-api + worker | ~400 MB |
+| solar-cost-explorer-api + frontend | ~350 MB |
 | shopify-erp-app | ~120 MB |
 | shopify-order-agent + worker | ~350 MB |
 | shopify-inventory-agent | ~250 MB |
@@ -84,7 +84,7 @@ Create A records for all six subdomains pointing to your Hetzner server IP:
 
 ```
 compensation-ingest.yourdomain.com  → <hetzner-ip>
-compensation-explorer.yourdomain.com → <hetzner-ip>
+solar.yourdomain.com                → <hetzner-ip>
 shopify-erp.yourdomain.com          → <hetzner-ip>
 shopify-orders.yourdomain.com       → <hetzner-ip>
 shopify-inventory.yourdomain.com    → <hetzner-ip>
@@ -109,7 +109,7 @@ docker compose logs -f
 ```bash
 # Should return 200
 curl https://compensation-ingest.yourdomain.com/api/surveys/
-curl https://compensation-explorer.yourdomain.com/graphql/
+curl https://solar.yourdomain.com/graphql/
 curl https://shopify-erp.yourdomain.com/health
 curl https://shopify-orders.yourdomain.com/health
 curl https://shopify-inventory.yourdomain.com/health
@@ -119,11 +119,11 @@ curl https://shopify-inventory.yourdomain.com/health
 
 ```bash
 # Rebuild a single service after a code change
-docker compose up -d --build compensation-ingest-api
+docker compose up -d --build solar-ingest-api
 
 # Run Django management commands
-docker compose exec compensation-ingest-api python manage.py createsuperuser
-docker compose exec compensation-explorer-api python manage.py seed_bands
+docker compose exec solar-ingest-api python manage.py createsuperuser
+docker compose exec solar-cost-explorer-api python manage.py seed_bands
 
 # Tail logs for one service
 docker compose logs -f shopify-order-agent

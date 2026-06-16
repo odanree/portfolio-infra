@@ -74,9 +74,9 @@ services:
       - external-net-2
       - external-net-3
     depends_on:
-      - compensation-ingest-api
-      - compensation-explorer-api
-      - compensation-explorer-frontend
+      - solar-ingest-api
+      - solar-cost-explorer-api
+      - solar-cost-explorer-frontend
       - shopify-erp-app
       - shopify-order-agent
       - shopify-inventory-agent
@@ -133,11 +133,11 @@ services:
 
   # ── Compensation Ingest API (Django + Celery) ─────────────────────────────────
 
-  compensation-ingest-api:
+  solar-ingest-api:
     build:
       context: ../solar-ingest-api
       dockerfile: Dockerfile
-    container_name: compensation-ingest-api
+    container_name: solar-ingest-api
     restart: unless-stopped
     command: >
       sh -c "python manage.py migrate --noinput &&
@@ -157,11 +157,11 @@ services:
     networks:
       - portfolio-net
 
-  compensation-ingest-worker:
+  solar-ingest-worker:
     build:
       context: ../solar-ingest-api
       dockerfile: Dockerfile
-    container_name: compensation-ingest-worker
+    container_name: solar-ingest-worker
     restart: unless-stopped
     command: celery -A config.celery worker --loglevel=info --concurrency 2
     environment:
@@ -180,11 +180,11 @@ services:
 
   # ── Compensation Benchmarking Explorer (Django GraphQL + Next.js) ─────────────
 
-  compensation-explorer-api:
+  solar-cost-explorer-api:
     build:
       context: ../solar-cost-explorer/backend
       dockerfile: Dockerfile
-    container_name: compensation-explorer-api
+    container_name: solar-cost-explorer-api
     restart: unless-stopped
     command: >
       sh -c "python manage.py migrate --noinput &&
@@ -203,20 +203,20 @@ services:
     networks:
       - portfolio-net
 
-  compensation-explorer-frontend:
+  solar-cost-explorer-frontend:
     build:
       context: ../solar-cost-explorer/frontend
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_GRAPHQL_URL: https://solar.${DOMAIN}/graphql/
-    container_name: compensation-explorer-frontend
+    container_name: solar-cost-explorer-frontend
     restart: unless-stopped
     environment:
       NODE_ENV: production
     networks:
       - portfolio-net
     depends_on:
-      - compensation-explorer-api
+      - solar-cost-explorer-api
 
   # ── Shopify ERP Integration (Node.js) ─────────────────────────────────────────
 
