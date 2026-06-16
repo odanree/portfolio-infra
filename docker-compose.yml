@@ -195,8 +195,8 @@ services:
       DATABASE_URL: postgres://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/compensation_explorer
       SECRET_KEY: ${EXPLORER_SECRET_KEY}
       DEBUG: "False"
-      ALLOWED_HOSTS: compensation-explorer.${DOMAIN}
-      CORS_ALLOWED_ORIGINS: https://compensation-explorer.${DOMAIN}
+      ALLOWED_HOSTS: solar.${DOMAIN}
+      CORS_ALLOWED_ORIGINS: https://solar.${DOMAIN}
     depends_on:
       postgres:
         condition: service_healthy
@@ -208,7 +208,7 @@ services:
       context: ../compensation-benchmarking-explorer/frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_GRAPHQL_URL: https://compensation-explorer.${DOMAIN}/graphql/
+        NEXT_PUBLIC_GRAPHQL_URL: https://solar.${DOMAIN}/graphql/
     container_name: compensation-explorer-frontend
     restart: unless-stopped
     environment:

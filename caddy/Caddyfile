@@ -24,9 +24,11 @@ compensation-ingest.{$DOMAIN} {
     reverse_proxy compensation-ingest-api:8000
 }
 
-# ── Compensation Benchmarking Explorer ───────────────────────────────────────
-# /graphql/ goes to the Django backend; everything else to the Next.js frontend
-compensation-explorer.{$DOMAIN} {
+# ── Solar Cost Explorer ──────────────────────────────────────────────────────
+# /graphql/ goes to the Django backend; everything else to the Next.js frontend.
+# Container names remain compensation-explorer-* (build context + service names
+# preserved per the "same host path/container" replacement plan).
+solar.{$DOMAIN} {
     handle /graphql/* {
         reverse_proxy compensation-explorer-api:8000
     }
