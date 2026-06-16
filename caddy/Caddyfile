@@ -19,8 +19,8 @@ cms.{$DOMAIN} {
     reverse_proxy wordpress:80
 }
 
-# ── Compensation Ingest API ───────────────────────────────────────────────────
-compensation-ingest.{$DOMAIN} {
+# ── Solar Installation Quote Ingest API ──────────────────────────────────────
+solar-ingest.{$DOMAIN} {
     reverse_proxy solar-ingest-api:8000
 }
 

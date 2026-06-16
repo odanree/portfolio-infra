@@ -77,7 +77,7 @@ jobs:
               ["/opt/sec-financial-intelligence"]="https://github.com/odanree/sec-financial-intelligence.git"
               ["/opt/jd-role-classifier"]="https://github.com/odanree/jd-role-classifier.git"
               ["/opt/portfolio-issues-agent"]="https://github.com/odanree/portfolio-issues-agent.git"
-              ["/opt/solar-ingest-api"]="https://github.com/odanree/compensation-ingest-api.git"
+              ["/opt/solar-ingest-api"]="https://github.com/odanree/solar-ingest-api.git"
               ["/opt/solar-cost-explorer"]="https://github.com/odanree/solar-cost-explorer.git"
               ["/opt/shopify-erp-integration"]="https://github.com/odanree/shopify-erp-integration.git"
               ["/opt/shopify-order-exception-agent"]="https://github.com/odanree/shopify-order-exception-agent.git"

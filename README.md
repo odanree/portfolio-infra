@@ -10,7 +10,7 @@ Internet
     ▼
 ┌─────────────────────────────────────────────────────────┐
 │  Caddy (auto TLS via Let's Encrypt)                     │
-│  compensation-ingest.domain   → solar-ingest-api        │
+│  solar-ingest.domain          → solar-ingest-api        │
 │  solar.domain                 → solar-cost-explorer-frontend │
 │                               ↘ /graphql/ → solar-cost-explorer-api │
 │  shopify-erp.domain           → shopify-erp-app         │
@@ -83,7 +83,7 @@ cp .env.example .env
 Create A records for all six subdomains pointing to your Hetzner server IP:
 
 ```
-compensation-ingest.yourdomain.com  → <hetzner-ip>
+solar-ingest.yourdomain.com         → <hetzner-ip>
 solar.yourdomain.com                → <hetzner-ip>
 shopify-erp.yourdomain.com          → <hetzner-ip>
 shopify-orders.yourdomain.com       → <hetzner-ip>
@@ -108,7 +108,7 @@ docker compose logs -f
 
 ```bash
 # Should return 200
-curl https://compensation-ingest.yourdomain.com/api/surveys/
+curl https://solar-ingest.yourdomain.com/api/surveys/
 curl https://solar.yourdomain.com/graphql/
 curl https://shopify-erp.yourdomain.com/health
 curl https://shopify-orders.yourdomain.com/health
@@ -129,7 +129,7 @@ docker compose exec solar-cost-explorer-api python manage.py seed_bands
 docker compose logs -f shopify-order-agent
 
 # Connect to the shared database
-docker compose exec postgres psql -U postgres -d compensation_ingest
+docker compose exec postgres psql -U postgres -d solar_ingest
 
 # Check Redis
 docker compose exec redis redis-cli -n 0 info keyspace
