@@ -445,8 +445,8 @@ services:
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
     environment:
       DATABASE_URL: postgresql+asyncpg://portfolio_user:${PORTFOLIO_DB_PASSWORD}@postgres:5432/jd_role_classifier
-      MOCK_NLP: "false"
-      LOAD_CLASSIFIER: "false"
+      MOCK_NLP: ${JD_CLASSIFIER_MOCK_NLP:-false}
+      LOAD_CLASSIFIER: ${JD_CLASSIFIER_LOAD:-false}
       APP_ENV: production
     depends_on:
       postgres:
