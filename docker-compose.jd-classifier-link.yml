@@ -1,0 +1,29 @@
+# Cross-compose link to the job-search-pipeline worker. Opt-in: only
+# loaded on hosts that run JSP alongside this stack and want the
+# classifier reachable by container name from JSP's worker.
+#
+# Setup (one-time, on the host that runs both stacks):
+#
+#   docker network create jd-classifier-link
+#
+# Bring up portfolio-infra with the override:
+#
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.jd-classifier-link.yml \
+#     up -d jd-classifier-api
+#
+# The classifier still listens on its main portfolio-net for Caddy
+# reverse-proxy traffic; this override just adds a second network
+# attachment so JSP's worker can reach it directly.
+
+services:
+  jd-classifier-api:
+    networks:
+      - portfolio-net
+      - jd-classifier-link
+
+networks:
+  jd-classifier-link:
+    external: true
+    name: ${JD_CLASSIFIER_NETWORK:-jd-classifier-link}
