@@ -117,7 +117,7 @@ grafana.{$DOMAIN} {
 }
 
 grafana-lumen.{$DOMAIN} {
-    redir https://grafana.{$DOMAIN}{uri} permanent
+    reverse_proxy lumen-monitoring-grafana:3000
 }
 
 beacon.{$DOMAIN} {
