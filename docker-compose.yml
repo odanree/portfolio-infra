@@ -465,12 +465,23 @@ volumes:
 networks:
   portfolio-net:
     driver: bridge
+  # Cross-stack networks that portfolio-caddy joins so it can reverse-proxy
+  # to services living in the beacon and lumen compose projects. If either
+  # of those projects isn't running on this host, docker compose will fail
+  # to attach — set the env var to an empty string in that case.
+  #
+  # Recovery lesson (2026-07-02): if these values are unset AND the caddy
+  # container is recreated fresh, caddy comes up on portfolio-net alone
+  # and every proxy_pass to beacon-* / lumen-* returns 502 with
+  # "server misbehaving" in the Docker DNS. Defaults below match the
+  # network names the beacon and lumen compose projects create; override
+  # via .env only if you rename those stacks.
   external-net-1:
     external: true
-    name: ${EXTERNAL_NET_1}
+    name: ${EXTERNAL_NET_1:-beacon_jsp-net}
   external-net-2:
     external: true
-    name: ${EXTERNAL_NET_2}
+    name: ${EXTERNAL_NET_2:-lumen_lumen-net}
   external-net-3:
     external: true
-    name: ${EXTERNAL_NET_3}
+    name: ${EXTERNAL_NET_3:-lumen_monitoring-net}
