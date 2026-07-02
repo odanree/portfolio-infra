@@ -112,6 +112,22 @@ adu.{$DOMAIN} {
     }
 }
 
+# ── ADU Dashboard TS canary (Phase D2 — cutover work in progress) ────────────
+# Same live sheet as adu.{$DOMAIN}, served by the TypeScript port of
+# server.py running as @adu-dashboard/api. Both containers sit on
+# adu-dashboard_adu-net so Caddy reaches them by docker DNS. This route
+# is for over-time parity comparison against adu.{$DOMAIN}; the UI in
+# prod still hits the Python backend. Retire this block in Phase D3 when
+# adu.{$DOMAIN} flips to adu-api-ts:8081.
+adu-canary.{$DOMAIN} {
+    reverse_proxy adu-api-ts:8081
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
 grafana.{$DOMAIN} {
     reverse_proxy beacon-grafana:3000
 }
