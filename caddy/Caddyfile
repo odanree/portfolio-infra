@@ -119,6 +119,13 @@ adu.{$DOMAIN} {
 # is for over-time parity comparison against adu.{$DOMAIN}; the UI in
 # prod still hits the Python backend. Retire this block in Phase D3 when
 # adu.{$DOMAIN} flips to adu-api-ts:8081.
+#
+# Cert-provisioning note: this block was added before the DNS A record
+# for adu-canary.danhle.net existed, so Caddy's initial Let's Encrypt
+# challenge got NXDOMAIN and cached the failure. A plain `caddy reload`
+# with an unchanged config is a no-op ("config is unchanged"), so a
+# trivial edit to this file is enough to nudge Caddy into re-attempting
+# cert issuance. Once the cert is issued, this comment can stay or go.
 adu-canary.{$DOMAIN} {
     reverse_proxy adu-api-ts:8081
     header {
