@@ -33,3 +33,17 @@ variable "tag_name" {
   type        = string
   default     = "marquez-oci"
 }
+
+# ─── beacon-cdc-listener (ADR-021 phase 3b) ──────────────────────────
+
+variable "cdc_listener_image_tag" {
+  description = "Image tag pushed to the beacon-cdc-listener ECR repo. Follows semver for tagged releases; CI pushes `latest` + git SHA on merge to master. Update this and re-apply to roll the service."
+  type        = string
+  default     = "latest"
+}
+
+variable "cdc_listener_desired_count" {
+  description = "Desired number of always-on Fargate tasks for the CDC listener. Set 0 during initial bootstrap (before the first image is in ECR) or during maintenance windows. Set 1 to activate the listener. Higher values don't help — LISTEN state is per-connection and every task would independently rebuild on every NOTIFY."
+  type        = number
+  default     = 0
+}
