@@ -7,3 +7,16 @@ docker-compose.override.yml
 
 # Editor state
 *.code-workspace
+
+# Contract-work archives — MUST NOT be committed to this public repo.
+# These directories contain recovered Lambda source with hardcoded
+# credentials (2018 Shopify API keys, AppColl production password
+# for processing@icaplaw.com). See docs/private/archives/ in the
+# job-search-pipeline repo for the reviewed reference material.
+docs/pct-lambdas/
+docs/pct-lambdas.md
+docs/mobovida-shopify-lambdas/
+docs/mobovida-shopify-lambdas.md
+
+# Working artifacts from local tooling
+.playwright-mcp/
