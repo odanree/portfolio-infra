@@ -58,3 +58,10 @@ output "beacon_cdc_log_group" {
   description = "CloudWatch Log Group holding listener stdout/stderr. Tail with `aws logs tail /ecs/marquez-oci-cdc-listener --follow`."
   value       = aws_cloudwatch_log_group.cdc_listener.name
 }
+
+# ─── GitHub Actions OIDC ────────────────────────────────────────────
+
+output "gh_actions_beacon_mcp_role_arn" {
+  description = "Role ARN for beacon-mcp GitHub Actions to assume via OIDC. Paste into .github/workflows/build-listener-image.yml as `role-to-assume`."
+  value       = aws_iam_role.gh_actions_beacon_mcp.arn
+}
