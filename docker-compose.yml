@@ -161,8 +161,13 @@ services:
     # No host port publish — Caddy reaches Varnish via docker DNS on
     # portfolio-net. Admin socket (6082) is never exposed, only accessible
     # via `docker exec portfolio-varnish varnishadm ...`.
-    tmpfs:
-      - /var/lib/varnish:exec
+    #
+    # /var/lib/varnish stays on the container's writable layer (not tmpfs).
+    # varnishd runs as the unprivileged `varnish` user in this image, and
+    # a bare `tmpfs: /var/lib/varnish` mount lands root-owned + mode 1777
+    # (sticky world-writable) which varnishd's directory-creation refuses.
+    # The image already sets correct ownership on /var/lib/varnish in its
+    # Dockerfile; leaving it alone is the simple + correct move.
     depends_on:
       wordpress:
         condition: service_started
