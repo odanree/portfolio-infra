@@ -21,7 +21,7 @@
 # a sibling BAN alongside revalidateTag(). VCL delivered by GitHub Actions from
 # odanree/headless-wp-next (varnish/hetzner.vcl → docker exec varnishadm hot-reload).
 cms.{$DOMAIN} {
-    reverse_proxy portfolio-varnish:6081
+    reverse_proxy portfolio-varnish:80
 }
 
 # ── Solar Installation Quote Ingest API ──────────────────────────────────────
