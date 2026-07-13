@@ -15,8 +15,13 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Headless WordPress CMS ───────────────────────────────────────────────────
+# Interposed origin cache: Caddy → portfolio-varnish:6081 → portfolio-wordpress:80.
+# Varnish coalesces stampedes on ISR-TTL expiry from the Vercel edge, grace-caches
+# during background regeneration, and evicts by tag when /api/revalidate fires
+# a sibling BAN alongside revalidateTag(). VCL delivered by GitHub Actions from
+# odanree/headless-wp-next (varnish/hetzner.vcl → docker exec varnishadm hot-reload).
 cms.{$DOMAIN} {
-    reverse_proxy wordpress:80
+    reverse_proxy portfolio-varnish:6081
 }
 
 # ── Solar Installation Quote Ingest API ──────────────────────────────────────

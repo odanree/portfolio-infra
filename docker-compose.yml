@@ -86,6 +86,7 @@ services:
       - sec-finint-api
       - jd-classifier-api
       - wordpress
+      - varnish
 
   # ── Headless WordPress CMS ───────────────────────────────────────────────────
 
@@ -129,6 +130,42 @@ services:
     depends_on:
       wordpress-db:
         condition: service_healthy
+    networks:
+      - portfolio-net
+
+  # ── Varnish 7.1 origin page cache ────────────────────────────────────────────
+  # Interposed cache in the reverse-proxy chain — Caddy proxies
+  # cms.${DOMAIN} to portfolio-varnish:6081, which coalesces requests
+  # + grace-caches responses from portfolio-wordpress:80. Same bounded
+  # context as WordPress (portfolio-net only); Varnish's admin socket
+  # is not published to the host.
+  #
+  # VCL config is delivered by GitHub Actions from the headless-wp-next
+  # repo (varnish/hetzner.vcl). The workflow uses `docker cp` + `docker
+  # exec varnishadm vcl.load/vcl.use` for zero-connection-drop hot-reload.
+  # Bind-mounting the file from ./caddy/… would beat the workflow's atomic
+  # replace, so the workflow writes to a per-container path instead.
+  varnish:
+    image: varnish:7.1-alpine
+    container_name: portfolio-varnish
+    restart: unless-stopped
+    environment:
+      VARNISH_SIZE: 128m
+    # Bootstrap VCL — bind-mounted read-only so the container can boot
+    # before the workflow's first `varnishadm vcl.load`. The bootstrap
+    # is a minimum-viable pass-through; the real cache policy arrives
+    # from odanree/headless-wp-next → varnish/hetzner.vcl via docker cp
+    # + docker exec varnishadm hot-reload (zero-connection-drop).
+    volumes:
+      - ./varnish/bootstrap.vcl:/etc/varnish/default.vcl:ro
+    # No host port publish — Caddy reaches Varnish via docker DNS on
+    # portfolio-net. Admin socket (6082) is never exposed, only accessible
+    # via `docker exec portfolio-varnish varnishadm ...`.
+    tmpfs:
+      - /var/lib/varnish:exec
+    depends_on:
+      wordpress:
+        condition: service_started
     networks:
       - portfolio-net
 
