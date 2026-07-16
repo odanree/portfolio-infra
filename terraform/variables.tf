@@ -61,3 +61,9 @@ variable "scoring_enabled" {
   type        = bool
   default     = true
 }
+
+variable "sonnet_triage_threshold" {
+  description = "Haiku composite-score threshold above which SFN routes to the SonnetDepth Lambda for a deep-dive rationale (ADR-020 phase 5). Default 6 = top ~35-40% of jobs by score. Raise to be more selective (fewer Sonnet calls, lower AWS spend, less depth coverage); lower to broaden. Sonnet costs ~50x Haiku per call, so this knob is the primary cost lever for phase 5. At default 6 and ~50 scorings/day, expected Sonnet spend is ~$5-15/month."
+  type        = number
+  default     = 6
+}

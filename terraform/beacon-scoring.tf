@@ -73,8 +73,12 @@ locals {
   # + push one image than three, and keeps the Anthropic SDK layer
   # cache-friendly.
   scoring_lambda_roles = {
-    haiku_triage   = { timeout = 30, memory = 512 }
-    sonnet_depth   = { timeout = 60, memory = 1024 }
+    haiku_triage = { timeout = 30, memory = 512 }
+    # ADR-020 phase 5: Sonnet depth-rationale calls can take longer
+    # than the previous 60s ceiling on cold-start + long-context 500-word
+    # generation. Bumped to 90s to leave headroom; Sonnet's worst-case
+    # observed latency at Beacon-scale is ~30-45s so this is 2x buffer.
+    sonnet_depth   = { timeout = 90, memory = 1024 }
     post_to_beacon = { timeout = 15, memory = 256 }
   }
 }
@@ -462,8 +466,16 @@ resource "aws_sfn_state_machine" "scoring" {
         Type = "Choice"
         Choices = [
           {
+            # ADR-020 phase 5 (2026-07-17): raised from 4 to
+            # var.sonnet_triage_threshold (default 6) so Sonnet
+            # depth-analysis only fires on jobs the candidate is
+            # plausibly interested in. Cost impact: Sonnet is
+            # ~50x per-call cost of Haiku, so limiting the pool
+            # keeps the AWS overhead ~$5-15/month at portfolio scale
+            # instead of ~$25/month at the old threshold. Tune via
+            # terraform.tfvars or -var when running apply.
             Variable           = "$.triage.composite_score"
-            NumericGreaterThan = 4
+            NumericGreaterThan = var.sonnet_triage_threshold
             Next               = "SonnetDepth"
           },
         ]
