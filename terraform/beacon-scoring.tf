@@ -504,10 +504,30 @@ resource "aws_sfn_state_machine" "scoring" {
         Resource = aws_lambda_function.scoring["post_to_beacon"].arn
         Retry = [
           {
+            # 5 attempts (was 3) — sized to survive VPS deploy blips.
+            # Discovered 2026-07-16 during ADR-020 parity backfill:
+            # 39/500 SFN executions failed with TimeoutError when a
+            # CI/CD auto-deploy took beacon-api offline for ~90s
+            # mid-batch. Previous 3-attempt policy at 5s/10s/20s
+            # backoff = ~35s window, which fit entirely inside the
+            # outage. New 5-attempt policy at 5s/10s/20s/40s backoff
+            # = ~115s window, comfortably outlasting a typical
+            # `docker compose up -d --build` recreate.
+            #
+            # Pairs with `urllib timeout 10s → 30s` in the
+            # job-search-pipeline companion PR
+            # (worker/lambdas/beacon_scoring/post_to_beacon.py).
+            # Combined chain: 4 × 30s Lambda timeout + 5/10/20/40s
+            # backoff = ~275s survival window on PostToBeacon.
+            #
+            # Pattern name: **cross-service deployment coordination
+            # during long-running async workflows** — retry budget
+            # must outlast the expected deploy blip on the receiving
+            # service.
             ErrorEquals     = ["Lambda.ServiceException", "States.TaskFailed"]
             IntervalSeconds = 5
             BackoffRate     = 2
-            MaxAttempts     = 3
+            MaxAttempts     = 5
           },
         ]
         Catch = [
