@@ -431,9 +431,17 @@ resource "aws_sfn_state_machine" "scoring" {
         ]
         Catch = [
           {
+            # ResultPath defaults to "$" (replaces state input with the
+            # error object). Do NOT set ResultPath = "$.error" — that
+            # requires the state input to be a JSON object, and the input
+            # to HaikuTriage is the SQS batch ARRAY from EventBridge Pipes
+            # (Pipes wraps SQS records in a list even at batch_size=1),
+            # which fails with States.ReferencePathConflict before Catch
+            # can even reach HandleFailure. HandleFailure is a Fail state
+            # with a static Cause and does not consume the error object,
+            # so the default is functionally identical.
             ErrorEquals = ["States.ALL"]
             Next        = "HandleFailure"
-            ResultPath  = "$.error"
           },
         ]
         Next = "TriageChoice"
@@ -464,9 +472,17 @@ resource "aws_sfn_state_machine" "scoring" {
         ]
         Catch = [
           {
+            # ResultPath defaults to "$" (replaces state input with the
+            # error object). Do NOT set ResultPath = "$.error" — that
+            # requires the state input to be a JSON object, and the input
+            # to HaikuTriage is the SQS batch ARRAY from EventBridge Pipes
+            # (Pipes wraps SQS records in a list even at batch_size=1),
+            # which fails with States.ReferencePathConflict before Catch
+            # can even reach HandleFailure. HandleFailure is a Fail state
+            # with a static Cause and does not consume the error object,
+            # so the default is functionally identical.
             ErrorEquals = ["States.ALL"]
             Next        = "HandleFailure"
-            ResultPath  = "$.error"
           },
         ]
         Next = "PostToBeaconAPI"
@@ -485,9 +501,17 @@ resource "aws_sfn_state_machine" "scoring" {
         ]
         Catch = [
           {
+            # ResultPath defaults to "$" (replaces state input with the
+            # error object). Do NOT set ResultPath = "$.error" — that
+            # requires the state input to be a JSON object, and the input
+            # to HaikuTriage is the SQS batch ARRAY from EventBridge Pipes
+            # (Pipes wraps SQS records in a list even at batch_size=1),
+            # which fails with States.ReferencePathConflict before Catch
+            # can even reach HandleFailure. HandleFailure is a Fail state
+            # with a static Cause and does not consume the error object,
+            # so the default is functionally identical.
             ErrorEquals = ["States.ALL"]
             Next        = "HandleFailure"
-            ResultPath  = "$.error"
           },
         ]
         End = true
