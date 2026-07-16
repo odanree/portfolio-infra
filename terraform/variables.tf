@@ -47,3 +47,17 @@ variable "cdc_listener_desired_count" {
   type        = number
   default     = 0
 }
+
+# ─── beacon-scoring (ADR-020 phase 1) ────────────────────────────────
+
+variable "scoring_lambda_image_tag" {
+  description = "Image tag pushed to the beacon-scoring ECR repo. Same repo backs both HaikuTriage and SonnetDepth lambdas — they're distinguished at runtime by the LAMBDA_ROLE env var. CI pushes `latest` + git SHA on merge to master."
+  type        = string
+  default     = "latest"
+}
+
+variable "scoring_enabled" {
+  description = "Bootstrap gate. Set false on the initial apply to create ECR + IAM + SQS + Secrets shells without failing on missing Lambda images. Flip to true after CI has pushed the first image AND the operator has populated all Secrets Manager entries. When false, Lambda / Step Functions / EventBridge Pipe resources are skipped."
+  type        = bool
+  default     = false
+}
