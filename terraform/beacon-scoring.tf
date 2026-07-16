@@ -467,13 +467,15 @@ resource "aws_sfn_state_machine" "scoring" {
         Choices = [
           {
             # ADR-020 phase 5 (2026-07-17): raised from 4 to
-            # var.sonnet_triage_threshold (default 6) so Sonnet
-            # depth-analysis only fires on jobs the candidate is
-            # plausibly interested in. Cost impact: Sonnet is
+            # var.sonnet_triage_threshold (default 8) so Sonnet
+            # depth-analysis only fires on the top ~10-15% of jobs —
+            # the "should probably apply" band where actionable depth
+            # actually helps a decision. Cost impact: Sonnet is
             # ~50x per-call cost of Haiku, so limiting the pool
-            # keeps the AWS overhead ~$5-15/month at portfolio scale
+            # keeps AWS overhead ~$3/month at portfolio scale
             # instead of ~$25/month at the old threshold. Tune via
-            # terraform.tfvars or -var when running apply.
+            # terraform.tfvars or -var when running apply (6 for
+            # broader coverage, 9 for even more selective).
             Variable           = "$.triage.composite_score"
             NumericGreaterThan = var.sonnet_triage_threshold
             Next               = "SonnetDepth"
