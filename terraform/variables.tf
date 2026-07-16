@@ -57,7 +57,7 @@ variable "scoring_lambda_image_tag" {
 }
 
 variable "scoring_enabled" {
-  description = "Bootstrap gate. Set false on the initial apply to create ECR + IAM + SQS + Secrets shells without failing on missing Lambda images. Flip to true after CI has pushed the first image AND the operator has populated all Secrets Manager entries. When false, Lambda / Step Functions / EventBridge Pipe resources are skipped."
+  description = "Normally-on toggle for the beacon-scoring Lambda / Step Functions / EventBridge Pipe resources. Default flipped from false to true on 2026-07-16 after the first-apply bootstrap window closed (2026-07-16 T02:31 UTC — see git history). Set to false ONLY for maintenance windows where you want the pipeline down (rebuild image, tear down for cost savings, etc.). If you flip to false and then apply, terraform WILL destroy 3 lambdas + SFN + Pipe — that is now an explicit operator choice, not a footgun from forgetting a CLI flag."
   type        = bool
-  default     = false
+  default     = true
 }

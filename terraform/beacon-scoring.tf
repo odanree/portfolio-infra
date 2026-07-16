@@ -39,20 +39,31 @@
 #   region and avoids cross-region secrets/log-group juggling. Callback
 #   latency to Hetzner (~140 ms) dominates over any AWS-region delta.
 #
-# Bootstrap order:
-#   1. `terraform apply` with scoring_enabled=false — creates ECR, SQS,
-#      DLQ, IAM shells, secrets shells, log groups. Lambda + Step
-#      Functions + Pipe skipped because there's no image yet.
-#   2. Operator populates all 4 secrets via
-#      `aws secretsmanager put-secret-value`.
-#   3. beacon-scoring CI (follow-up work under job-search-pipeline)
-#      builds the container image (single image, entrypoint dispatches
-#      on LAMBDA_ROLE) and pushes to ECR on merge to master.
-#   4. `terraform apply -var scoring_enabled=true` — brings up the
+# Bootstrap history (already completed on 2026-07-16; kept for context):
+#   1. `terraform apply -var scoring_enabled=false` — created ECR, SQS,
+#      DLQ, IAM shells, secrets shells, log groups. Lambda / SFN / Pipe
+#      skipped because no image existed in ECR yet.
+#   2. Operator populated all 4 secrets via `aws secretsmanager
+#      put-secret-value` (out-of-band, values never in Terraform state).
+#   3. beacon-scoring image built + pushed to ECR from the local dev
+#      box (`docker build --provenance=false --sbom=false --platform
+#      linux/amd64` — see job-search-pipeline/worker/lambdas/
+#      beacon_scoring/Dockerfile header for the load-bearing flags).
+#   4. `terraform apply -var scoring_enabled=true` — brought up the
 #      three lambdas, the state machine, and the SQS→SFN Pipe.
-#   5. Flip Beacon's SCORING_BACKEND flag to `stepfunctions` for 10%
-#      of traffic (ADR-020 phase 3) and start comparing outputs via
-#      the parity harness.
+#
+# Current operating mode (post-bootstrap): scoring_enabled defaults to
+# true. Standard `terraform apply` maintains the full pipeline. Setting
+# scoring_enabled=false on the CLI or in a tfvars file will DESTROY
+# the lambdas + SFN + Pipe (SQS/secrets/ECR/IAM survive) — reserved for
+# explicit maintenance windows.
+#
+# Ongoing operator ops:
+#   - Rebuild image: docker build ... && docker push ... && aws lambda
+#     update-function-code (3× for haiku, sonnet, post-to-beacon)
+#   - Rotate the Anthropic key: put-secret-value + aws lambda
+#     update-function-configuration --description (forces cold-start)
+#     per [[project_anthropic_key_attribution]]
 
 locals {
   scoring_name = "${var.tag_name}-beacon-scoring"
