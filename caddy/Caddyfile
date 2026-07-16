@@ -149,6 +149,22 @@ grafana-lumen.{$DOMAIN} {
 }
 
 beacon.{$DOMAIN} {
+    # ADR-020 phase 2: HMAC-verified scoring callback endpoint routes
+    # directly to beacon-api. The AWS beacon-scoring Lambda POSTs here
+    # after scoring; the endpoint requires HMAC-SHA256 signature + bearer
+    # + 5-minute replay window before touching the DB (see
+    # job-search-pipeline api/routers/internal.py). Everything else stays
+    # proxied through the Next.js frontend as before.
+    #
+    # Trust boundary: this path is publicly reachable from the internet.
+    # The three-layer verification (HMAC + bearer + timestamp) IS the
+    # auth. If those layers ever weaken, tighten by allowlisting AWS
+    # us-east-1 Lambda egress IP ranges here as a defense-in-depth
+    # measure.
+    handle /api/internal/* {
+        reverse_proxy beacon-api:8000
+    }
+
     reverse_proxy beacon-frontend:3000
     header {
         X-Frame-Options DENY
