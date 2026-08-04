@@ -155,6 +155,12 @@ resource "aws_secretsmanager_secret" "scoring_callback_bearer" {
   recovery_window_in_days = 0
 }
 
+resource "aws_secretsmanager_secret" "scoring_jwt_secret_key" {
+  name                    = "${local.scoring_name}/jwt-secret-key"
+  description             = "Beacon's HS256 JWT signing secret. Only used when the HaikuTriage lambda's EDGE_SCORER_ENABLED env var is 'true' -- the lambda signs a short-lived JWT to authenticate against edge.beacon.danhle.net/v1/score/fast (strangler-fig cutover, job-search-pipeline#234). Must be byte-identical to the JWT_SECRET_KEY env var on the Beacon FastAPI (Hetzner). Populated out-of-band: run `openssl rand -hex 32` on Hetzner, put it in Beacon's .env, then aws secretsmanager put-secret-value here."
+  recovery_window_in_days = 0
+}
+
 # ─── SQS: request queue + DLQ ────────────────────────────────────────
 
 resource "aws_sqs_queue" "scoring_dlq" {
@@ -251,6 +257,7 @@ data "aws_iam_policy_document" "scoring_lambda_secrets" {
       "${aws_secretsmanager_secret.scoring_callback_hmac.arn}*",
       "${aws_secretsmanager_secret.scoring_callback_url.arn}*",
       "${aws_secretsmanager_secret.scoring_callback_bearer.arn}*",
+      "${aws_secretsmanager_secret.scoring_jwt_secret_key.arn}*",
     ]
   }
 }
@@ -394,7 +401,17 @@ resource "aws_lambda_function" "scoring" {
       CALLBACK_HMAC_SECRET_ARN     = aws_secretsmanager_secret.scoring_callback_hmac.arn
       CALLBACK_URL_SECRET_ARN      = aws_secretsmanager_secret.scoring_callback_url.arn
       CALLBACK_BEARER_SECRET_ARN   = aws_secretsmanager_secret.scoring_callback_bearer.arn
-      LOG_LEVEL                    = "INFO"
+      # Strangler-fig cutover (job-search-pipeline#234). When
+      # scoring_edge_scorer_enabled=true (a variable, defaults false),
+      # HaikuTriage delegates to edge.beacon.danhle.net/v1/score/fast
+      # instead of calling Anthropic in-lambda. The JWT_SECRET secret
+      # value must be populated in Secrets Manager BEFORE flipping
+      # the flag -- otherwise the lambda will fail at token-sign time
+      # and every score will retry through SFN's backoff.
+      JWT_SECRET_KEY_SECRET_ARN = aws_secretsmanager_secret.scoring_jwt_secret_key.arn
+      EDGE_SCORER_ENABLED       = var.scoring_edge_scorer_enabled ? "true" : "false"
+      EDGE_SCORER_URL           = var.scoring_edge_scorer_url
+      LOG_LEVEL                 = "INFO"
     }
   }
 
@@ -667,11 +684,12 @@ output "scoring_state_machine_arn" {
 }
 
 output "scoring_secret_arns" {
-  description = "Secrets Manager ARNs the operator must populate out-of-band before flipping scoring_enabled=true."
+  description = "Secrets Manager ARNs the operator must populate out-of-band before flipping scoring_enabled=true. jwt_secret_key is only needed if scoring_edge_scorer_enabled will be flipped to true — safe to leave unpopulated with the flag off."
   value = {
     anthropic_api_key = aws_secretsmanager_secret.scoring_anthropic_key.arn
     callback_hmac_key = aws_secretsmanager_secret.scoring_callback_hmac.arn
     callback_url      = aws_secretsmanager_secret.scoring_callback_url.arn
     callback_bearer   = aws_secretsmanager_secret.scoring_callback_bearer.arn
+    jwt_secret_key    = aws_secretsmanager_secret.scoring_jwt_secret_key.arn
   }
 }
