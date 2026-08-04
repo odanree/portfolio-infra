@@ -62,6 +62,18 @@ variable "scoring_enabled" {
   default     = true
 }
 
+variable "scoring_edge_scorer_enabled" {
+  description = "Strangler-fig cutover flag (job-search-pipeline#234). When true, the HaikuTriage lambda POSTs to edge.beacon.danhle.net/v1/score/fast instead of calling Anthropic directly. Rollback = flip back to false. BEFORE enabling: (1) populate the beacon-scoring/jwt-secret-key Secrets Manager entry with the same value as JWT_SECRET_KEY on the Beacon FastAPI (Hetzner .env), (2) apply to grant the lambda IAM read on the new secret, (3) verify one scoring event still lands as backend='sfn' in scoring_call_metrics. Then flip this to true and apply. Watch backend='edge' rows appear in Grafana 'Beacon Scoring — Backend A/B/C'."
+  type        = bool
+  default     = false
+}
+
+variable "scoring_edge_scorer_url" {
+  description = "URL the HaikuTriage lambda POSTs to when scoring_edge_scorer_enabled is true. Overridable so we can point at a staging edge (e.g. a workers.dev preview URL) before flipping the flag on prod. No effect when the flag is false."
+  type        = string
+  default     = "https://edge.beacon.danhle.net/v1/score/fast"
+}
+
 variable "sonnet_triage_threshold" {
   description = "Haiku composite-score threshold above which SFN routes to the SonnetDepth Lambda for a deep-dive rationale (ADR-020 phase 5). Default 8 = top ~10-15% of jobs by score — the 'should probably apply' band where actionable depth actually helps a decision. Raise to be even more selective; lower to broaden coverage (e.g. 6 = top ~35-40%, 4 = top ~60%). Sonnet costs ~50x Haiku per call, so this knob is the primary cost lever for phase 5. At default 8 and ~50 scorings/day, expected Sonnet spend is ~$3/month; at 6 ~$10/month; at 4 ~$25/month."
   type        = number
