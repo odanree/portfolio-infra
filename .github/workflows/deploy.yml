@@ -49,6 +49,7 @@ jobs:
               ["/opt/shopify-order-exception-agent"]="master"
               ["/opt/shopify-inventory-discrepancy-agent"]="master"
               ["/opt/shopify-metaobjects-checkout-demo"]="master"
+              ["/opt/oc-realestate-intel"]="master"
             )
             # Multi-service values are space-separated; the loop appends them to
             # REBUILD which is passed verbatim to `docker compose up --build`.
@@ -63,6 +64,20 @@ jobs:
               ["/opt/shopify-order-exception-agent"]="shopify-order-agent shopify-order-agent-worker"
               ["/opt/shopify-inventory-discrepancy-agent"]="shopify-inventory-agent"
               ["/opt/shopify-metaobjects-checkout-demo"]="shopify-metaobjects-webhook"
+            )
+            # Sibling compose stacks — repos that run their OWN docker compose
+            # project (not folded into portfolio-infra's compose) but that
+            # portfolio-caddy reverse-proxies to via an external-net-* attachment.
+            # These MUST be up before portfolio-infra's caddy is recreated,
+            # otherwise `docker compose up caddy` fails to attach the missing
+            # external network.
+            #
+            # Value format: "<compose-file>|<rebuildable-services>". Rebuildable
+            # services are the ones passed to `docker compose up --build` when
+            # the sibling repo actually changed; the whole file is brought
+            # up (`up -d` without --build) every deploy for idempotency.
+            declare -A SIBLING_STACK=(
+              ["/opt/oc-realestate-intel"]="docker-compose.prod.yml|oci-app"
             )
 
             # Pull every repo, recording which ones actually moved. Rebuilding
@@ -86,9 +101,11 @@ jobs:
               ["/opt/shopify-order-exception-agent"]="https://github.com/odanree/shopify-order-exception-agent.git"
               ["/opt/shopify-inventory-discrepancy-agent"]="https://github.com/odanree/shopify-inventory-discrepancy-agent.git"
               ["/opt/shopify-metaobjects-checkout-demo"]="https://github.com/odanree/shopify-metaobjects-checkout-demo.git"
+              ["/opt/oc-realestate-intel"]="https://github.com/odanree/oc-realestate-intel.git"
             )
 
             REBUILD=""
+            SIBLING_REBUILD=""
             INFRA_CHANGED=0
             for dir in "${!REPO_BRANCH[@]}"; do
               if [ ! -d "$dir/.git" ]; then
@@ -97,6 +114,8 @@ jobs:
                 # Treat as a fresh build so the new service goes up immediately.
                 if [ "$dir" = "/opt/portfolio-infra" ]; then
                   INFRA_CHANGED=1
+                elif [ -n "${SIBLING_STACK[$dir]:-}" ]; then
+                  SIBLING_REBUILD="$SIBLING_REBUILD $dir"
                 else
                   REBUILD="$REBUILD ${REPO_SVC[$dir]}"
                 fi
@@ -109,8 +128,42 @@ jobs:
               [ "$before" = "$after" ] && continue
               if [ "$dir" = "/opt/portfolio-infra" ]; then
                 INFRA_CHANGED=1
+              elif [ -n "${SIBLING_STACK[$dir]:-}" ]; then
+                SIBLING_REBUILD="$SIBLING_REBUILD $dir"
               else
                 REBUILD="$REBUILD ${REPO_SVC[$dir]}"
+              fi
+            done
+
+            # ─── Sibling compose stacks ─────────────────────────────────────
+            # Ensure every sibling stack is up (idempotent) so its external
+            # network exists before portfolio-infra's caddy is recreated. If
+            # the sibling repo moved this deploy, also --build its rebuildable
+            # services. Missing .env is a soft-skip so the FIRST deploy after
+            # onboarding a new sibling doesn't hard-fail — operator populates
+            # .env out-of-band, next deploy brings it up.
+            for dir in "${!SIBLING_STACK[@]}"; do
+              [ ! -d "$dir/.git" ] && continue   # not cloned yet (auto-clone above may have skipped on network error)
+              spec="${SIBLING_STACK[$dir]}"
+              compose_file="${spec%%|*}"
+              svcs="${spec##*|}"
+              if [ ! -f "$dir/$compose_file" ]; then
+                echo ">> Sibling $dir: $compose_file not present on this branch yet — skipping"
+                continue
+              fi
+              if [ ! -f "$dir/.env" ]; then
+                echo "!! Sibling $dir: .env missing — populate out-of-band and re-run deploy. Skipping."
+                continue
+              fi
+              cd "$dir"
+              if echo " $SIBLING_REBUILD " | grep -q " $dir "; then
+                echo ">> Rebuilding sibling stack in $dir ($svcs)"
+                docker builder prune -f >/dev/null 2>&1 || true
+                docker compose -f "$compose_file" up -d --build --remove-orphans $svcs
+              else
+                # Idempotent up — ensures the stack's external network exists
+                # so downstream caddy recreate can attach.
+                docker compose -f "$compose_file" up -d --remove-orphans
               fi
             done
 
