@@ -177,6 +177,19 @@ grafana-beacon.{$DOMAIN} {
     redir https://grafana.{$DOMAIN}{uri} permanent
 }
 
+# ── OC Realestate Intel (LangGraph supervisor agent) ─────────────────────────
+# Migrated from AWS marquez-oci EC2 (t3.medium + EIP + EBS ≈ $32/mo) into
+# the /opt/oc-realestate-intel sibling compose stack on this VPS. Reaches
+# oci-app via oci_oci-net (external-net-4). ADR-XXXX documents the cutover.
+oci.{$DOMAIN} {
+    reverse_proxy oci-app:8000
+    header {
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # LOCAL ROUTES (continued) — targets live in portfolio-infra's own compose.
 # ─────────────────────────────────────────────────────────────────────────────

@@ -73,6 +73,7 @@ services:
       - external-net-1
       - external-net-2
       - external-net-3
+      - external-net-4
     depends_on:
       - solar-ingest-api
       - solar-cost-explorer-api
@@ -527,3 +528,9 @@ networks:
   external-net-3:
     external: true
     name: ${EXTERNAL_NET_3:-lumen_monitoring-net}
+  # OC Realestate Intel sibling stack (/opt/oc-realestate-intel).
+  # Migrated off AWS marquez-oci EC2 — Caddy joins oci_oci-net to
+  # reverse-proxy oci-app:8000.
+  external-net-4:
+    external: true
+    name: ${EXTERNAL_NET_4:-oci_oci-net}
