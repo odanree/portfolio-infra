@@ -13,11 +13,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "tf-state-portfolio-478818964123"
-    key            = "marquez-oci/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "tf-state-lock"
-    encrypt        = true
+    bucket       = "tf-state-portfolio-478818964123"
+    key          = "marquez-oci/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
   }
 }
 
