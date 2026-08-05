@@ -1,95 +1,33 @@
-# `marquez-oci` — Terraform module
+# portfolio-infra AWS Terraform
 
-Single-EC2 host on AWS that runs **two demo apps**:
+Manages the residual AWS footprint for the portfolio after **most workloads moved to the Hetzner VPS**. Post-migration, this module provisions three things:
 
-- [Marquez](https://github.com/MarquezProject/marquez) — OpenLineage backend for Beacon's data-lineage events. Live at `lineage.danhle.net`.
-- [oc-realestate-intel](https://github.com/odanree/oc-realestate-intel) — LangGraph multi-agent over Orange County parcel data. Live at `oci.danhle.net`.
+1. **beacon-scoring** — Lambda + Step Functions + SQS + EventBridge Pipes for the two-tier Haiku/Sonnet job-scoring pipeline (ADR-020).
+2. **beacon-cdc-listener** — Always-on Fargate task that LISTENs to the Beacon Postgres CDC and posts change events to a Vercel deploy hook (ADR-021 phase 3b).
+3. **GitHub Actions OIDC** — Role that lets `job-search-pipeline` CI push scoring images to ECR without long-lived AWS keys.
 
-Both apps stay independent (separate compose projects, separate volumes); they share the host's CPU, memory, and a single Caddy that fronts TLS for both subdomains.
+State backend: `s3://tf-state-portfolio-478818964123/marquez-oci/terraform.tfstate` with DynamoDB lock table `tf-state-lock` (both in `us-east-1`). The state-key path still says `marquez-oci/` for historical reasons — renaming the key would migrate state and isn't worth the risk for a cosmetic issue.
 
-## Architecture
+## What used to live here
 
-```
-                      Cloudflare (DNS-only or proxied)
-                            │
-              ┌─────────────┼─────────────┐
-              ▼                           ▼
-       lineage.danhle.net           oci.danhle.net
-              │                           │
-              └─────────────┬─────────────┘
-                            ▼
-                  ┌─────────────────────┐
-                  │     EC2 t3.medium   │  Elastic IP
-                  │     Ubuntu 24.04    │  ($30/mo + EBS)
-                  │                     │
-                  │   ┌──────────────┐  │
-                  │   │ Caddy        │  │  Auto-issued Let's
-                  │   │ (TLS, route) │  │  Encrypt certs
-                  │   └──┬───────┬───┘  │
-                  │      │       │      │
-                  │  ┌───▼──┐ ┌──▼───┐  │
-                  │  │marquez│ │ oci  │  │  Independent
-                  │  │ stack │ │stack │  │  compose projects
-                  │  └───┬──┘ └──┬───┘  │
-                  │      │       │      │
-                  │   shared docker network
-                  └──────┼───────┼──────┘
-                         │       │
-                  Secrets Manager (Anthropic, Langfuse)
-                  via EC2 IAM role — no keys in image / repo
-```
-
-## What this module creates
-
-| Resource | Purpose | Cost |
-|---|---|---|
-| EC2 t3.medium | The host | ~$30/mo |
-| EBS gp3 60 GiB | Root volume, holds OS + docker images + named-volume data | ~$5/mo |
-| Elastic IP | Stable public IP for DNS | $0 while attached |
-| Security group | SSH from operator IP, 80/443 from world | $0 |
-| IAM role + instance profile | Lets the EC2 fetch Secrets Manager values | $0 |
-| Secrets Manager (2 secrets) | Anthropic API key + Langfuse keys (values populated out-of-band) | ~$0.80/mo |
-| **Total** | | **~$35–37/mo** |
-
-State backend: `s3://tf-state-portfolio-478818964123/marquez-oci/terraform.tfstate` with DynamoDB lock table `tf-state-lock` (both in us-east-1).
+Until August 2026, this module also managed a **`marquez-oci` EC2** (t3.medium + EIP + EBS ≈ $32/mo) that hosted [oc-realestate-intel](https://github.com/odanree/oc-realestate-intel) at `oci.danhle.net`. OCI was moved to the shared Hetzner VPS as a sibling compose stack ([portfolio-infra#32](https://github.com/odanree/portfolio-infra/pull/32), [portfolio-infra#33](https://github.com/odanree/portfolio-infra/pull/33), [oc-realestate-intel#8](https://github.com/odanree/oc-realestate-intel/pull/8)) and the EC2 + its supporting IAM/SG/Secrets Manager resources were destroyed. This PR is the terraform cleanup that removes the now-orphaned definitions from state.
 
 ## Layout
 
 ```
 terraform/
-├── versions.tf          required_providers + S3 backend + default tags
-├── variables.tf         tunables (region, instance_type, key_pair, SSH CIDR, …)
-├── network.tf           default VPC lookup + security group
-├── iam.tf               instance profile + Secrets Manager read policy
-├── secrets.tf           Secrets Manager entries (values set out-of-band)
-├── compute.tf           AMI lookup + EC2 + EBS + Elastic IP + user_data
-├── outputs.tf           IP, SSH command, secret ARNs
-└── README.md            this file
+├── versions.tf                    required_providers + S3 backend + default tags
+├── variables.tf                   tunables (tag_name still used as prefix by beacon-*)
+├── network.tf                     default VPC + subnet data sources (shared with beacon-cdc)
+├── outputs.tf                     beacon-cdc + gh-actions outputs
+├── beacon-cdc.tf                  Fargate CDC listener stack
+├── beacon-scoring.tf              Haiku/Sonnet Lambda + SFN + Pipes + secrets
+├── beacon-scoring-vps-publisher.tf VPS SNS publisher gateway
+├── gh-actions-oidc.tf             OIDC role for job-search-pipeline CI
+└── README.md                      this file
 ```
 
 ## Usage
-
-### One-time bootstrap (state backend)
-
-Already done — the S3 bucket + DynamoDB table exist. If you ever recreate from scratch:
-
-```bash
-# in us-east-1
-aws s3api create-bucket --bucket tf-state-portfolio-<ACCOUNT_ID>
-aws s3api put-bucket-versioning --bucket tf-state-portfolio-<ACCOUNT_ID> \
-    --versioning-configuration Status=Enabled
-aws s3api put-bucket-encryption --bucket tf-state-portfolio-<ACCOUNT_ID> \
-    --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
-aws s3api put-public-access-block --bucket tf-state-portfolio-<ACCOUNT_ID> \
-    --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
-
-aws dynamodb create-table --table-name tf-state-lock \
-    --attribute-definitions AttributeName=LockID,AttributeType=S \
-    --key-schema AttributeName=LockID,KeyType=HASH \
-    --billing-mode PAY_PER_REQUEST
-```
-
-### Apply
 
 ```bash
 cd terraform/
@@ -98,40 +36,23 @@ terraform plan
 terraform apply
 ```
 
-### Populate secrets
-
-```bash
-aws secretsmanager put-secret-value \
-    --secret-id marquez-oci/anthropic-api-key \
-    --secret-string "sk-ant-..."
-
-aws secretsmanager put-secret-value \
-    --secret-id marquez-oci/langfuse \
-    --secret-string '{"public_key":"pk-lf-...","secret_key":"sk-lf-...","host":"https://us.cloud.langfuse.com"}'
-```
-
-### Deploy the app stack
-
-The Terraform brings the host up with docker + compose + awscli installed and the IAM role attached. Application deployment (compose files, Caddyfile, secret rendering) is a separate step — see `../scripts/deploy-app.sh` (work in progress).
-
-### DNS
-
-After `terraform apply` finishes, point Cloudflare DNS at the output `public_ip`:
-
-- `lineage.danhle.net` A → `<public_ip>` (DNS-only at first; flip to proxied once Caddy has cert)
-- `oci.danhle.net` A → `<public_ip>` (same)
-
 ## Design notes
 
-- **Why default VPC, not a dedicated one**: portfolio scale doesn't need network isolation between environments. A real prod deploy would create a VPC per env.
-- **Why Secrets Manager, not SSM Parameter Store**: SecretsManager auto-rotates and integrates cleanly with the EC2 IAM role pattern. SSM is cheaper but lacks the rotation story.
-- **Why secret values not in Terraform**: anything in `terraform.tfstate` is visible to anyone with state-bucket read. Setting values out-of-band via the CLI keeps secret material out of state entirely.
-- **Why no `recovery_window_in_days` on secrets**: when `terraform destroy` runs, we want secrets gone immediately rather than a 7-day soft-delete period — they're cheap to recreate and we don't want the same name "in use" if we re-apply.
-- **Why `lifecycle.ignore_changes = [ami]`**: Canonical publishes new Ubuntu AMIs frequently. Without this, `terraform plan` would propose replacing the instance every week. AMI updates should be deliberate, not drift-driven.
+- **Why `var.tag_name = "marquez-oci"` is still there**: it's baked into every resource name across beacon-cdc + beacon-scoring (`${var.tag_name}-cdc-listener`, `${var.tag_name}/beacon-scoring/...`, etc.). Renaming would recreate all of them, so the name lives on as a historical prefix.
+- **Why default VPC + subnets**: portfolio scale doesn't need network isolation between environments. A real prod deploy would create a VPC per env.
+- **Why Secrets Manager, not SSM Parameter Store**: SecretsManager integrates cleanly with Lambda / Fargate task-role secret-fetching. SSM is cheaper but SecretsManager's rotation + auto-mount story is what beacon-scoring needs.
+- **Why secret values not in Terraform**: anything in `terraform.tfstate` is visible to anyone with state-bucket read. Setting values out-of-band via `aws secretsmanager put-secret-value` keeps secret material out of state entirely.
+- **Why no `recovery_window_in_days` on secrets**: on `terraform destroy`, we want secrets gone immediately rather than a 7-day soft-delete period — they're cheap to recreate and we don't want the same name "in use" if we re-apply.
 
-## Future work
+## Cost profile (post-migration)
 
-- Move Postgres for oc-realestate-intel to RDS (managed DB story, +$15/mo).
-- Move stateful data (Postgres, Qdrant, Neo4j, Marquez DB) to separate EBS volumes so we can replace the instance without losing data.
-- ECR for app images so `terraform apply` deploys a specific version rather than relying on `git pull` on the box.
-- Switch to dedicated VPC + private/public subnets once anything sensitive lives here.
+| Resource | Monthly |
+|---|---:|
+| Fargate CDC listener (1 × 0.25 vCPU / 0.5 GB always-on) | ~$6 |
+| Lambda + Step Functions + Pipes (Haiku + Sonnet scoring, ~50 jobs/day) | ~$2 |
+| Secrets Manager (~5 secrets across beacon-cdc + beacon-scoring) | ~$2 |
+| CloudWatch Logs (Fargate + Lambda) | ~$1 |
+| Route 53 | $0.50 |
+| **Total** | **~$12/mo** |
+
+(Down from ~$37/mo pre-migration. The delta was the marquez-oci EC2 + its EIP + EBS + supporting secrets.)
