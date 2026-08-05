@@ -63,9 +63,9 @@ variable "scoring_enabled" {
 }
 
 variable "scoring_edge_scorer_enabled" {
-  description = "Strangler-fig cutover flag (job-search-pipeline#234). When true, the HaikuTriage lambda POSTs to edge.beacon.danhle.net/v1/score/fast instead of calling Anthropic directly. Rollback = flip back to false. BEFORE enabling: (1) populate the beacon-scoring/jwt-secret-key Secrets Manager entry with the same value as JWT_SECRET_KEY on the Beacon FastAPI (Hetzner .env), (2) apply to grant the lambda IAM read on the new secret, (3) verify one scoring event still lands as backend='sfn' in scoring_call_metrics. Then flip this to true and apply. Watch backend='edge' rows appear in Grafana 'Beacon Scoring — Backend A/B/C'."
+  description = "Strangler-fig cutover flag (job-search-pipeline#234). When true, the HaikuTriage lambda POSTs to edge.beacon.danhle.net/v1/score/fast instead of calling Anthropic directly. Rollback = flip back to false. BEFORE enabling: (1) populate the beacon-scoring/jwt-secret-key Secrets Manager entry with the same value as JWT_SECRET_KEY on the Beacon FastAPI (Hetzner .env), (2) apply to grant the lambda IAM read on the new secret, (3) verify one scoring event still lands as backend='sfn' in scoring_call_metrics. Then flip this to true and apply. Watch backend='edge' rows appear in Grafana 'Beacon Scoring — Backend A/B/C'. Default flipped from false to true on 2026-08-05 after the cutover was validated in prod — the flag lives on for rollback, not for the default runtime path."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "scoring_edge_scorer_url" {
