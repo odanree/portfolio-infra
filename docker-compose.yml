@@ -133,6 +133,10 @@ services:
         define('WP_SITEURL', 'https://cms.${DOMAIN}');
     volumes:
       - wordpress_data:/var/www/html
+      # CVE-2026-109618 / CVE-2026-109619 mitigations. Partial — upgrade
+      # to PHP 8.3.36+ via `docker compose pull wordpress` is the real fix.
+      # Remove this bind-mount once php -v confirms >= 8.3.36.
+      - ./wordpress/conf.d/sec-2026-10-cve.ini:/usr/local/etc/php/conf.d/sec-2026-10-cve.ini:ro
     depends_on:
       wordpress-db:
         condition: service_healthy

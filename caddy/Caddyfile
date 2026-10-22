@@ -21,6 +21,13 @@
 # a sibling BAN alongside revalidateTag(). VCL delivered by GitHub Actions from
 # odanree/headless-wp-next (varnish/hetzner.vcl → docker exec varnishadm hot-reload).
 cms.{$DOMAIN} {
+    # Edge-level request-body cap mitigates CVE-2026-109618 (PHP OOM
+    # corruption) by rejecting oversized requests before they reach
+    # Varnish/PHP. Matches post_max_size in wordpress/conf.d/sec-2026-10-cve.ini.
+    # Raise to 32M if front-door /wp-admin uploads become required.
+    request_body {
+        max_size 8MB
+    }
     reverse_proxy portfolio-varnish:80
 }
 
